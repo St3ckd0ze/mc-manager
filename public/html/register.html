@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WE-1 SPA - Login</title>
+  <title>Registrieren - WE-1 SPA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
   <style>
@@ -30,8 +30,8 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white">
       <div class="container-fluid">
         <div class="d-flex align-items-center">
-          <a id="LinkRoot" class="navbar-brand me-3" href="index.html">WE-1 SPA</a>
-          <a id="LinkImpressum" class="nav-link" href="html/impressum.html">Impressum</a>
+          <a id="LinkRoot" class="navbar-brand me-3" href="../index.html">WE-1 SPA</a>
+          <a id="LinkImpressum" class="nav-link" href="impressum.html">Impressum</a>
         </div>
       </div>
     </nav>
@@ -39,18 +39,18 @@
 
   <div class="main-content">
     <div class="card shadow p-4" style="min-width: 300px; max-width: 400px;">
-      <h3 class="text-center mb-3">Login</h3>
-      <form id="FormLogin">
+      <h3 class="text-center mb-3">Registrieren</h3>
+      <form id="FormSignup">
         <div class="mb-3">
-          <input type="text" class="form-control" id="FormLoginUsername" placeholder="Benutzername">
+          <input type="text" class="form-control" id="FormSignupUsername" placeholder="Benutzername">
         </div>
         <div class="mb-3">
-          <input type="password" class="form-control" id="FormLoginPassword" placeholder="Passwort">
+          <input type="password" class="form-control" id="FormSignupPassword" placeholder="Passwort">
         </div>
-        <button type="button" class="btn btn-primary w-100" id="ButtonLoginUser" onclick="window.location.href= 'html/start.html'">Einloggen</button>
+        <button type="button" class="btn btn-success w-100" id="ButtonSignupUser">Registrieren</button>
       </form>
       <div class="text-center mt-3">
-        <a href="html/register.html" id="LinkShowSignupDialog">Noch kein Konto? Registrieren</a>
+        <a href="../index.html" id="LinkShowLoginDialog">Zurück zum Login</a>
       </div>
     </div>
   </div>
