@@ -12,5 +12,5 @@
         "skipLibCheck": true,
         "allowSyntheticDefaultImports": true
     },
-    "include": ["src/**/*", "public/module"]
+    "include": ["src/**/*", "public/module", "src/ApplicationLoader.ts", "src/ApplicationManager.ts", "src/pages/LandingPagePOM.ts", "src/pages/StartPagePOM.ts", "src/pages/UserManagementPagePOM.ts", "src/domain/Users.ts", "src/ApplicationLoader.ts", "src/ApplicationManagersrc/pages/LandingPagePOM.tsePOMsrc/pages/StartPagePOM.tsePOMsrc/pages/UserManagementPagePOM.tsePOM.ts", "src/domain/Users.ts"]
 }

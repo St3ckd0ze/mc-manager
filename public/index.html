@@ -23,37 +23,26 @@
       justify-content: center;
     }
   </style>
+  
 </head>
-<body id="LandingPage">
-
+<body>
+  <!-- Navbar bleibt immer sichtbar -->
   <div id="TopMenu" class="shadow p-3 bg-white">
     <nav class="navbar navbar-expand-lg navbar-light bg-white">
       <div class="container-fluid">
         <div class="d-flex align-items-center">
-          <a id="LinkRoot" class="navbar-brand me-3" href="index.html">WE-1 SPA</a>
-          <a id="LinkImpressum" class="nav-link" href="html/impressum.html">Impressum</a>
+          <a id="LinkRoot" class="navbar-brand me-3" href="#">WE-1 SPA</a>
+          <a id="LinkImpressum" class="nav-link" href="#">Impressum</a>
+          <a id="LinkUserManagement" class="nav-link d-none" href="#">User-Verwaltung</a>
         </div>
+        <button id="ButtonLogout" class="btn btn-outline-secondary ms-auto d-none">Logout</button>
       </div>
     </nav>
   </div>
 
-  <div class="main-content">
-    <div class="card shadow p-4" style="min-width: 300px; max-width: 400px;">
-      <h3 class="text-center mb-3">Login</h3>
-      <form id="FormLogin">
-        <div class="mb-3">
-          <input type="text" class="form-control" id="FormLoginUsername" placeholder="Benutzername">
-        </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" id="FormLoginPassword" placeholder="Passwort">
-        </div>
-        <button type="button" class="btn btn-primary w-100" id="ButtonLoginUser" onclick="window.location.href= 'html/start.html'">Einloggen</button>
-      </form>
-      <div class="text-center mt-3">
-        <a href="html/register.html" id="LinkShowSignupDialog">Noch kein Konto? Registrieren</a>
-      </div>
-    </div>
-  </div>
+  <!-- Hier wird die Seite dynamisch geladen -->
+  <main id="app"></main>
 
+  <script type="module" src="./js/ApplicationLoader.js"></script>
 </body>
 </html>

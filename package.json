@@ -18,5 +18,8 @@
   "description": "",
   "dependencies": {
     "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }
