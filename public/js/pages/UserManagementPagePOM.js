@@ -1,14 +1,12 @@
-import { ApplicationManager } from "../ApplicationManager.js";
 import { AbstractPOM } from "./AbstractPOM.js";
-
 export class UserManagementPagePOM extends AbstractPOM {
-    constructor(private appManager: ApplicationManager) {
+    appManager;
+    constructor(appManager) {
         super();
+        this.appManager = appManager;
     }
-
-    showPage(): void {
+    showPage() {
         this.clearPageContent();
-
         const container = document.createElement("div");
         container.id = "UserManagementPage";
         container.innerHTML = `
@@ -17,7 +15,7 @@ export class UserManagementPagePOM extends AbstractPOM {
                 <p>Hier wird später die Benutzerverwaltung erscheinen.</p>
             </div>
         `;
-
         document.getElementById("PageContent")?.appendChild(container);
     }
 }
+//# sourceMappingURL=UserManagementPagePOM.js.map

@@ -1,19 +1,15 @@
-import { ApplicationManager } from "../ApplicationManager.js";
 import { AbstractPOM } from "./AbstractPOM.js";
-
 export class ImpressumPagePOM extends AbstractPOM {
-    constructor(private appManager: ApplicationManager) {
+    appManager;
+    constructor(appManager) {
         super();
+        this.appManager = appManager;
     }
-
-    showPage(): void {
+    showPage() {
         this.clearPageContent();
-
         const pageContent = document.getElementById("PageContent");
-
         const container = document.createElement("div");
         container.id = "ImpressumPage";
-
         container.innerHTML = `
   <div class="container mt-5">
     <h1>Impressum</h1>
@@ -43,7 +39,7 @@ export class ImpressumPagePOM extends AbstractPOM {
     </p>
   </div>
         `;
-
         pageContent?.appendChild(container);
     }
 }
+//# sourceMappingURL=ImpressumPagePOM.js.map
