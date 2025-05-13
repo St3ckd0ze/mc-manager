@@ -76,33 +76,33 @@ export class LandingPagePOM extends AbstractPOM {
             const firstName = document.getElementById("FormSignupFirstName").value.trim();
             const lastName = document.getElementById("FormSignupLastName").value.trim();
             if (!username || !password) {
-                this.showToast("User ID and password cannot be empty.");
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
                 return;
             }
             const success = this.appManager.addUser(username, firstName, lastName, password);
             if (success) {
-                this.showToast("User registered successfully.");
+                this.showToast("User erfolgreich registriert.", true);
                 signupForm.reset();
             }
             else {
-                this.showToast("User ID already exists.");
+                this.showToast("User ID existiert bereits.", false);
             }
         });
         document.getElementById("ButtonLoginUser").addEventListener("click", () => {
             const username = document.getElementById("FormLoginUsername").value.trim();
             const password = document.getElementById("FormLoginPassword").value.trim();
             if (!username || !password) {
-                this.showToast("User ID and password cannot be empty.");
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
                 return;
             }
             const success = this.appManager.login(username, password);
             if (success) {
-                this.showToast("Login successful.");
+                this.showToast("Login erfolgreich.", true);
                 loginForm.reset();
                 this.appManager.loadStartPage();
             }
             else {
-                this.showToast("Invalid credentials.");
+                this.showToast("Falsche Anmeldedaten.", false);
             }
         });
         document.getElementById("LinkImpressum").addEventListener("click", () => {

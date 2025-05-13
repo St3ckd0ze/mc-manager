@@ -87,16 +87,16 @@ export class LandingPagePOM extends AbstractPOM {
             const lastName = (document.getElementById("FormSignupLastName") as HTMLInputElement).value.trim();
 
             if (!username || !password) {
-                this.showToast("User ID and password cannot be empty.");
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
                 return;
             }
 
             const success = this.appManager.addUser(username, firstName, lastName, password);
             if (success) {
-                this.showToast("User registered successfully.");
+                this.showToast("User erfolgreich registriert.", true);
                 signupForm.reset();
             } else {
-                this.showToast("User ID already exists.");
+                this.showToast("User ID existiert bereits.", false);
             }
         });
 
@@ -105,17 +105,17 @@ export class LandingPagePOM extends AbstractPOM {
             const password = (document.getElementById("FormLoginPassword") as HTMLInputElement).value.trim();
 
             if (!username || !password) {
-                this.showToast("User ID and password cannot be empty.");
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
                 return;
             }
 
             const success = this.appManager.login(username, password);
             if (success) {
-                this.showToast("Login successful.");
+                this.showToast("Login erfolgreich.", true);
                 loginForm.reset();
                 this.appManager.loadStartPage();
             } else {
-                this.showToast("Invalid credentials.");
+                this.showToast("Falsche Anmeldedaten.", false);
             }
         });
 

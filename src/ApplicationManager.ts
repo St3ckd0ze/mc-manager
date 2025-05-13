@@ -7,7 +7,7 @@ import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
 export class ApplicationManager {
 
     users = new Map<string, User>();
-    loggedInUser: User | undefined; // am anfang ist der user noch nicht eingelogt, also auch nicht vom typ user
+    loggedInUser: User | undefined;
 
     constructor() {
         this.addUser("admin", "Manfred", "Mustermann", "123");
@@ -29,7 +29,6 @@ export class ApplicationManager {
     }
 
     addUser(userID: string, firstName: string, lastName: string, password: string): boolean {
-        // gucken, ob userID bereits vergeben wurde
         if(this.users.has(userID))
             return false;
         this.users.set(userID, new User(userID, firstName, lastName, password));
@@ -39,7 +38,6 @@ export class ApplicationManager {
     login(userID: string, password: string): boolean {
         const user = this.users.get(userID);
         if(user != null && user.password === password) {
-            // wenn der user existiert und das pw stimmt, dann log den user in
             this.loggedInUser = user;
             return true;
         }

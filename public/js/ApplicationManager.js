@@ -5,7 +5,7 @@ import { ImpressumPagePOM } from './pages/ImpressumPagePOM.js';
 import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
 export class ApplicationManager {
     users = new Map();
-    loggedInUser; // am anfang ist der user noch nicht eingelogt, also auch nicht vom typ user
+    loggedInUser;
     constructor() {
         this.addUser("admin", "Manfred", "Mustermann", "123");
     }
@@ -22,7 +22,6 @@ export class ApplicationManager {
         this.updateMenuExtras();
     }
     addUser(userID, firstName, lastName, password) {
-        // gucken, ob userID bereits vergeben wurde
         if (this.users.has(userID))
             return false;
         this.users.set(userID, new User(userID, firstName, lastName, password));
@@ -31,7 +30,6 @@ export class ApplicationManager {
     login(userID, password) {
         const user = this.users.get(userID);
         if (user != null && user.password === password) {
-            // wenn der user existiert und das pw stimmt, dann log den user in
             this.loggedInUser = user;
             return true;
         }
