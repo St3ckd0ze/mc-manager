@@ -6,7 +6,7 @@ import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
 
 export class ApplicationManager {
 
-    users = new Map<string, User>();
+    //users = new Map<string, User>();
     loggedInUser: User | undefined;
 
     constructor() {
@@ -19,29 +19,64 @@ export class ApplicationManager {
     }
 
     loadStartPage() {
+        console.log("Loading StartPage");
         new StartPagePOM(this).showPage();
         this.updateMenuExtras();
     }
-
+    
     loadImpressumPage() {
         new ImpressumPagePOM(this).showPage();
         this.updateMenuExtras();
     }
+    
+    loadUserManagementPage() {
+        new UserManagementPagePOM(this).showPage();
+            this.updateMenuExtras();
+    }
+    
+    async addUser(userID: string, firstName: string, lastName: string, password: string): Promise<boolean> {
+        const response = await fetch('http://localhost:80/api/users', {
+                method: 'POST',
+                headers: { 'Content-type': 'application/json'},
+                body: JSON.stringify({
+                    userID: userID,
+                    password: password,
+                    firstName: firstName,
+                    lastName: lastName
 
-    addUser(userID: string, firstName: string, lastName: string, password: string): boolean {
-        if(this.users.has(userID))
+                })
+            });
+
+        console.log("Response:", response);
+
+        if (!response.ok) {
+            console.error("Fehler beim Hinzufügen des Users:", response.statusText);
             return false;
-        this.users.set(userID, new User(userID, firstName, lastName, password));
+        }
         return true;
     }
 
-    login(userID: string, password: string): boolean {
-        const user = this.users.get(userID);
-        if(user != null && user.password === password) {
-            this.loggedInUser = user;
-            return true;
+    async login(userID: string, password: string): Promise<boolean> {
+        const response = await fetch("http://localhost:80/api/login", {
+            method: "GET",
+            headers: { "Authorization": "Basic " + btoa(userID + ":" + password) }
+        });
+
+
+        if (!response.ok) {
+            console.error("Login fehlgeschlagen:", response.statusText);
+            return false;
         }
-        return false;
+
+        const data = await response.json();
+        if (data) {
+            this.loggedInUser = new User(data.userID, data.firstName, data.lastName, data.password);
+            this.updateMenuExtras();
+            return true;
+        } else {
+            console.error("Login fehlgeschlagen:", data.message);
+            return false;
+        }
     }
 
     logout() {
@@ -59,8 +94,20 @@ export class ApplicationManager {
         return this.loggedInUser;
     }
 
-    getUserCount(): number {
-        return this.users.size;
+    async getUserCount(): Promise<number> {
+        const response = await fetch("http://localhost:80/api/users/count", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        if (!response.ok) {
+            console.error("Fehler beim Abrufen der User-Anzahl:", response.statusText);
+            return 0;
+        }
+        const data = await response.json() as { UserCount: number };
+        return data.UserCount;
+
     }
 
     updateMenuExtras() {
@@ -74,10 +121,23 @@ export class ApplicationManager {
         userManagementLink.classList.toggle("d-none", !this.isLoggedIn());
     }
 }
-userManagementPage = new UserManagementPagePOM(this);
 
-loadUserManagementPage() {
-    this.userManagementPage.showPage();
+
+
+async getUsers(): Promise<User[]> {
+    const response = await fetch("http://localhost:80/api/users", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    if (!response.ok) {
+        console.error("Fehler beim Abrufen der User:", response.statusText);
+        return [];
+    }
+    
+    const data = await response.json();
+    return data
+    
 }
-
 }

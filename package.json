@@ -17,6 +17,7 @@
   "homepage": "https://github.com/St3ckd0ze/web1#readme",
   "description": "",
   "dependencies": {
+    "body-parser": "^2.2.0",
     "express": "^5.1.0"
   },
   "devDependencies": {

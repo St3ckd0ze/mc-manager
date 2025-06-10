@@ -7,17 +7,19 @@ export class StartPagePOM extends AbstractPOM{
     }
 
 
-    showPage(): void {
+    async showPage(): Promise<void> {
         this.clearPageContent();
+        
         const pageContent = document.getElementById("PageContent");
+        if(pageContent) pageContent.innerHTML = "";
 
         const container = document.createElement("div");
         container.id = "StartPage";
 
         const user = this.appManager.getLoggedInUser();
-        const userCount = this.appManager.getUserCount();
+        const userCount = await this.appManager.getUserCount();
         const greeting = user ? `${user.firstName} ${user.lastName}` : "Guest";
-        const verb = userCount === 1 ? "ist" : "sind";
+        const verb = await userCount === 1 ? "ist" : "sind";
 
         container.innerHTML = `
             <div class="p-4">
@@ -31,6 +33,7 @@ export class StartPagePOM extends AbstractPOM{
         document.getElementById("LinkLogout")!.addEventListener("click", () => {
             this.appManager.logout();
             this.appManager.loadLandingPage();
+            
         });
 
         document.getElementById("LinkImpressum")!.addEventListener("click", () => {
@@ -42,6 +45,9 @@ export class StartPagePOM extends AbstractPOM{
         document.getElementById("StartPageLinkUserManagement")?.addEventListener("click", () => {
             this.appManager.loadUserManagementPage();
         });
+    }
+
+    loadEventListeners(): void {
     }
 
 }
