@@ -6,31 +6,30 @@ import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
 
 export class ApplicationManager {
 
+    loginCount = 0;
     //users = new Map<string, User>();
     loggedInUser: User | undefined;
 
     constructor() {
-        this.addUser("admin", "Manfred", "Mustermann", "123");
     }
 
     loadLandingPage() {
-        new LandingPagePOM(this).showPage();
+        new LandingPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
 
     loadStartPage() {
-        console.log("Loading StartPage");
-        new StartPagePOM(this).showPage();
+        new StartPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     
     loadImpressumPage() {
-        new ImpressumPagePOM(this).showPage();
+        new ImpressumPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     
     loadUserManagementPage() {
-        new UserManagementPagePOM(this).showPage();
+        new UserManagementPagePOM(this).loadPage();
             this.updateMenuExtras();
     }
     
@@ -47,7 +46,6 @@ export class ApplicationManager {
                 })
             });
 
-        console.log("Response:", response);
 
         if (!response.ok) {
             console.error("Fehler beim Hinzufügen des Users:", response.statusText);
@@ -124,20 +122,32 @@ export class ApplicationManager {
 
 
 
-async getUsers(): Promise<User[]> {
-    const response = await fetch("http://localhost:80/api/users", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json"
+    async getUsers(): Promise<User[]> {
+        const response = await fetch("http://localhost:80/api/users", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        if (!response.ok) {
+            console.error("Fehler beim Abrufen der User:", response.statusText);
+            return [];
         }
-    });
-    if (!response.ok) {
-        console.error("Fehler beim Abrufen der User:", response.statusText);
-        return [];
+        
+        const data = await response.json();
+        return data
     }
-    
-    const data = await response.json();
-    return data
-    
+
+    async deleteUser(userID: string): Promise<boolean> {
+    const response = await fetch(`http://localhost:80/api/users/${userID}`, {
+        method: 'DELETE'
+    });
+
+    if (!response.ok) {
+        console.error("Fehler beim Löschen des Users: " + userID);
+        return false;
+    }
+
+    return true;
 }
 }

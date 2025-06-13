@@ -23,5 +23,25 @@ export class AbstractPOM {
     getElementById(id) {
         return document.getElementById(id);
     }
+    static async showPage(path) {
+        const appContent = document.getElementById('pageContent');
+        try {
+            const response = await fetch(path);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const htmlContent = await response.text();
+            if (appContent) {
+                appContent.innerHTML = '';
+                appContent.innerHTML = htmlContent;
+            }
+            else {
+                console.error(`Container with id "pageContent" not found.`);
+            }
+        }
+        catch (error) {
+            console.error("Failed to showPage with path: " + path);
+        }
+    }
 }
 //# sourceMappingURL=AbstractPOM.js.map

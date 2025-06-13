@@ -4,26 +4,25 @@ import { StartPagePOM } from './pages/StartPagePOM.js';
 import { ImpressumPagePOM } from './pages/ImpressumPagePOM.js';
 import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
 export class ApplicationManager {
+    loginCount = 0;
     //users = new Map<string, User>();
     loggedInUser;
     constructor() {
-        this.addUser("admin", "Manfred", "Mustermann", "123");
     }
     loadLandingPage() {
-        new LandingPagePOM(this).showPage();
+        new LandingPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     loadStartPage() {
-        console.log("Loading StartPage");
-        new StartPagePOM(this).showPage();
+        new StartPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     loadImpressumPage() {
-        new ImpressumPagePOM(this).showPage();
+        new ImpressumPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     loadUserManagementPage() {
-        new UserManagementPagePOM(this).showPage();
+        new UserManagementPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     async addUser(userID, firstName, lastName, password) {
@@ -37,7 +36,6 @@ export class ApplicationManager {
                 lastName: lastName
             })
         });
-        console.log("Response:", response);
         if (!response.ok) {
             console.error("Fehler beim Hinzufügen des Users:", response.statusText);
             return false;
@@ -113,6 +111,16 @@ export class ApplicationManager {
         }
         const data = await response.json();
         return data;
+    }
+    async deleteUser(userID) {
+        const response = await fetch(`http://localhost:80/api/users/${userID}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            console.error("Fehler beim Löschen des Users: " + userID);
+            return false;
+        }
+        return true;
     }
 }
 //# sourceMappingURL=ApplicationManager.js.map

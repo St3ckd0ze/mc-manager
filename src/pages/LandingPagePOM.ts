@@ -7,65 +7,45 @@ export class LandingPagePOM extends AbstractPOM {
         super();
     }
 
-    showPage(): void {
-        
-        this.clearPageContent();
-        
-        const pageContent = document.getElementById("PageContent");
 
-        const container = document.createElement("div");
-        container.id="LandingPage";
 
-        container.innerHTML = `
-                <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-          <div class="card shadow p-4" style="min-width: 300px; max-width: 400px; width: 100%;">
-            
-            <form id="FormLogin">
-              <h3 class="text-center mb-3">Login</h3>
-              <div class="mb-3">
-                <input id="FormLoginUsername" type="text" class="form-control" placeholder="User ID">
-              </div>
-              <div class="mb-3">
-                <input id="FormLoginPassword" type="password" class="form-control" placeholder="Password">
-              </div>
-              <div class="d-grid mb-2">
-                <button type="button" id="ButtonLoginUser" class="btn btn-primary">Login</button>
-              </div>
-              <div class="text-center">
-                <a href="#" id="LinkShowSignupDialog">Noch kein Konto? Registrieren</a>
-              </div>
-            </form>
+    public async loadPage(): Promise<void> {
+      
+      await AbstractPOM.showPage("./html/landing.html");
 
-            <form id="FormSignup" style="display:none;">
-              <h3 class="text-center mb-3">Registrieren</h3>
-              <div class="mb-3">
-                <input id="FormSignupUsername" type="text" class="form-control" placeholder="User ID">
-              </div>
-              <div class="mb-3">
-                <input id="FormSignupPassword" type="password" class="form-control" placeholder="Password">
-              </div>
-              <div class="mb-3">
-                <input id="FormSignupFirstName" type="text" class="form-control" placeholder="First Name">
-              </div>
-              <div class="mb-3">
-                <input id="FormSignupLastName" type="text" class="form-control" placeholder="Last Name">
-              </div>
-              <div class="d-grid mb-2">
-                <button type="button" id="ButtonSignupUser" class="btn btn-success">Registrieren</button>
-              </div>
-              <div class="text-center">
-                <a href="#" id="LinkShowLoginDialog">Zurück zum Login</a>
-              </div>
-            </form>
+      const loginForm = document.getElementById("FormLogin") as HTMLFormElement;
+      const signupForm = document.getElementById("FormSignup") as HTMLFormElement;
 
-          </div>
-        </div>   
-                `;
+      const toggleSignup = document.getElementById("ToggleSignupPassword");
+      const inputSignup = document.getElementById("FormSignupPassword") as HTMLInputElement;
+      const toggleLogin = document.getElementById("ToggleLoginPassword");
+      const inputLogin = document.getElementById("FormLoginPassword") as HTMLInputElement;
 
-        pageContent?.appendChild(container);
-       
-        const loginForm = document.getElementById("FormLogin") as HTMLFormElement;
-        const signupForm = document.getElementById("FormSignup") as HTMLFormElement;
+        toggleLogin?.addEventListener("click", () => {
+        const icon = toggleLogin.querySelector("i");
+        if (inputLogin.type === "password") {
+            inputLogin.type = "text";
+            icon?.classList.remove("bi-eye");
+            icon?.classList.add("bi-eye-slash");
+        } else {
+            inputLogin.type = "password";
+            icon?.classList.remove("bi-eye-slash");
+            icon?.classList.add("bi-eye");
+        }
+        });
+
+        toggleSignup?.addEventListener("click", () => {
+        const icon = toggleSignup.querySelector("i");
+        if (inputSignup.type === "password") {
+            inputSignup.type = "text";
+            icon?.classList.remove("bi-eye");
+            icon?.classList.add("bi-eye-slash");
+        } else {
+            inputSignup.type = "password";
+            icon?.classList.remove("bi-eye-slash");
+            icon?.classList.add("bi-eye");
+        }
+        });
 
       document.getElementById("LinkShowSignupDialog")!.addEventListener("click", () => {
             signupForm.style.display = "block";
@@ -88,11 +68,20 @@ export class LandingPagePOM extends AbstractPOM {
                 return;
             }
 
+
+            
+            if(password.length < 7) {
+                this.showToast("Passwort muss mindestens 7 Zeichen haben!", false);
+                return;
+            }
+            
             const success = await this.appManager.addUser(username, firstName, lastName, password);
+            
             if (success) {
                 this.showToast("User erfolgreich registriert.", true);
                 signupForm.reset();
-            } else {
+            } 
+            else {
                 this.showToast("User ID existiert bereits.", false);
             }
         });
@@ -109,6 +98,7 @@ export class LandingPagePOM extends AbstractPOM {
             const success = await this.appManager.login(username, password);
             if (success) {
                 this.showToast("Login erfolgreich.", true);
+                this.appManager.loginCount += 1;
                 loginForm.reset();
                 this.appManager.loadStartPage();
             } else {
@@ -127,13 +117,12 @@ export class LandingPagePOM extends AbstractPOM {
             else {
                 this.appManager.loadLandingPage();
             }
-            
-            
         });
+        
         document.getElementById("LinkUserManagement")!.addEventListener("click", () => {
             if (this.appManager.isLoggedIn()) {
-                new UserManagementPagePOM(this.appManager).showPage();
+                new UserManagementPagePOM(this.appManager).loadPage();
             }
         });
-  }
+    }
 }
