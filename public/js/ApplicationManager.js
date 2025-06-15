@@ -89,14 +89,48 @@ export class ApplicationManager {
         return data.UserCount;
     }
     updateMenuExtras() {
-        const logoutButton = document.getElementById("LinkLogout");
-        if (logoutButton) {
-            logoutButton.classList.toggle("d-none", !this.isLoggedIn());
+        const menuExtras = document.getElementById("MenuExtras");
+        const navBarList = document.getElementById("NavBarList");
+        if (!menuExtras || !navBarList) {
+            return;
+        }
+        // Vorherige Buttons entfernen
+        const logoutBtn = document.getElementById("LinkLogout");
+        if (logoutBtn && logoutBtn.parentElement) {
+            menuExtras.removeChild(logoutBtn.parentElement);
         }
         const userManagementLink = document.getElementById("LinkUserManagement");
-        if (userManagementLink) {
-            userManagementLink.classList.toggle("d-none", !this.isLoggedIn());
+        if (userManagementLink && userManagementLink.parentElement) {
+            navBarList.removeChild(userManagementLink.parentElement);
         }
+        // Wenn nicht eingeloggt return
+        if (!this.isLoggedIn()) {
+            return;
+        }
+        // Logout-Button erstellen und rechts einfügen
+        const logoutLi = document.createElement("li");
+        logoutLi.className = "nav-item";
+        const logoutButton = document.createElement("button");
+        logoutButton.id = "LinkLogout";
+        logoutButton.className = "btn btn-outline-secondary";
+        logoutButton.textContent = "Logout";
+        logoutButton.onclick = () => {
+            this.logout();
+            this.loadLandingPage();
+        };
+        logoutLi.appendChild(logoutButton);
+        menuExtras.appendChild(logoutLi);
+        // User Management Link erstellen und links einfügen
+        const userMgmtLi = document.createElement("li");
+        userMgmtLi.className = "nav-item ms-2";
+        const userMgmtLink = document.createElement("a");
+        userMgmtLink.id = "LinkUserManagement";
+        userMgmtLink.href = "#";
+        userMgmtLink.className = "nav-link";
+        userMgmtLink.textContent = "User Management";
+        userMgmtLink.onclick = () => this.loadUserManagementPage();
+        userMgmtLi.appendChild(userMgmtLink);
+        navBarList.appendChild(userMgmtLi);
     }
     async getUsers() {
         const response = await fetch("http://localhost:80/api/users", {

@@ -69,11 +69,12 @@ export class LandingPagePOM extends AbstractPOM {
             }
 
 
-            
+            /*
             if(password.length < 7) {
                 this.showToast("Passwort muss mindestens 7 Zeichen haben!", false);
                 return;
             }
+            */
             
             const success = await this.appManager.addUser(username, firstName, lastName, password);
             
@@ -118,11 +119,6 @@ export class LandingPagePOM extends AbstractPOM {
                 this.appManager.loadLandingPage();
             }
         });
-        
-        document.getElementById("LinkUserManagement")!.addEventListener("click", () => {
-            if (this.appManager.isLoggedIn()) {
-                new UserManagementPagePOM(this.appManager).loadPage();
-            }
-        });
+        this.appManager.updateMenuExtras();
     }
 }
