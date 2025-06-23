@@ -8,6 +8,13 @@ export class UserManagementPagePOM extends AbstractPOM {
     async loadPage() {
         await AbstractPOM.showPage("./html/user-management.html");
         this.clearPageContent();
+        const filterContainer = document.getElementById("FilterUserContainer");
+        if (filterContainer) {
+            filterContainer.innerHTML = `
+        <input type="text" id="UserFilterInput" class="form-control d-inline w-auto me-2" placeholder="User ID filtern">
+        <button type="button" id="UserFilterButton" class="btn btn-primary">Filtern</button>
+      `;
+        }
         const users = await this.appManager.getUsers();
         const tbody = document.getElementById("UserTableBody");
         if (tbody)
@@ -128,6 +135,50 @@ export class UserManagementPagePOM extends AbstractPOM {
                     else {
                         this.showToast("User ID existiert bereits.", false);
                     }
+                });
+            });
+        });
+        const filterButton = document.getElementById("UserFilterButton");
+        filterButton?.addEventListener("click", async () => {
+            const filterInput = document.getElementById("UserFilterInput").value.trim().toLowerCase();
+            const filteredUsers = (await this.appManager.getUsers())
+                .filter(u => u.userID.toLowerCase().includes(filterInput))
+                .sort((a, b) => a.userID.localeCompare(b.userID));
+            const tbody = document.getElementById("UserTableBody");
+            if (tbody)
+                tbody.innerHTML = "";
+            filteredUsers.forEach((user) => {
+                const row = document.createElement("tr");
+                const tdUserID = document.createElement("td");
+                tdUserID.id = `${user.userID}TableItemUsername`;
+                tdUserID.textContent = user.userID;
+                const tdFirstName = document.createElement("td");
+                tdFirstName.id = `${user.userID}TableItemFirstName`;
+                tdFirstName.textContent = user.firstName;
+                const tdLastName = document.createElement("td");
+                tdLastName.id = `${user.userID}TableItemLastName`;
+                tdLastName.textContent = user.lastName;
+                const tdActions = document.createElement("td");
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "btn btn-success me-2";
+                editButton.id = `${user.userID}TableItemEditButton`;
+                editButton.textContent = "Edit";
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "btn btn-danger me-2";
+                deleteButton.id = `${user.userID}TableItemDeleteButton`;
+                deleteButton.textContent = "Delete";
+                tdActions.appendChild(editButton);
+                tdActions.appendChild(deleteButton);
+                row.appendChild(tdUserID);
+                row.appendChild(tdFirstName);
+                row.appendChild(tdLastName);
+                row.appendChild(tdActions);
+                tbody?.appendChild(row);
+                deleteButton.addEventListener("click", async () => {
+                    await this.appManager.deleteUser(user.userID);
+                    await this.loadPage();
                 });
             });
         });

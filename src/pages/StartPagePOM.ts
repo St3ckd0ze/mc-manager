@@ -18,8 +18,15 @@ export class StartPagePOM extends AbstractPOM{
 
         const welcomeText = document.getElementById("StartPageWelcomeText");
         const userCountSpan = document.getElementById("UserCount");
+        const wrongLoginCount = document.getElementById("WrongLogins");
 
-        //this.showToast("Es haben sich " + this.appManager.loginCount + " Nutzer eingeloggt!",true);
+        if (wrongLoginCount) {
+            wrongLoginCount.style.visibility = "visible";
+            wrongLoginCount.textContent = String(this.appManager.loginCount + " falsche Logins");
+        }
+
+
+        //this.showToast("Es haben sich " + this.appManager.loginCount + " Nutzer inkorrekt eingeloggt!", false);
 
         if (welcomeText && userCountSpan) {
             welcomeText.style.visibility = "invisible";

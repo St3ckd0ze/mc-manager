@@ -69,12 +69,12 @@ export class LandingPagePOM extends AbstractPOM {
             }
 
 
-            /*
+            
             if(password.length < 7) {
                 this.showToast("Passwort muss mindestens 7 Zeichen haben!", false);
                 return;
             }
-            */
+            
             
             const success = await this.appManager.addUser(username, firstName, lastName, password);
             
@@ -99,11 +99,11 @@ export class LandingPagePOM extends AbstractPOM {
             const success = await this.appManager.login(username, password);
             if (success) {
                 this.showToast("Login erfolgreich.", true);
-                this.appManager.loginCount += 1;
                 loginForm.reset();
                 this.appManager.loadStartPage();
             } else {
                 this.showToast("Falsche Anmeldedaten.", false);
+                this.appManager.loginCount += 1;
             }
         });
 

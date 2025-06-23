@@ -13,7 +13,12 @@ export class StartPagePOM extends AbstractPOM {
         const verb = await userCount === 1 ? "ist" : "sind";
         const welcomeText = document.getElementById("StartPageWelcomeText");
         const userCountSpan = document.getElementById("UserCount");
-        //this.showToast("Es haben sich " + this.appManager.loginCount + " Nutzer eingeloggt!",true);
+        const wrongLoginCount = document.getElementById("WrongLogins");
+        if (wrongLoginCount) {
+            wrongLoginCount.style.visibility = "visible";
+            wrongLoginCount.textContent = String(this.appManager.loginCount + " falsche Logins");
+        }
+        //this.showToast("Es haben sich " + this.appManager.loginCount + " Nutzer inkorrekt eingeloggt!", false);
         if (welcomeText && userCountSpan) {
             welcomeText.style.visibility = "invisible";
             userCountSpan.textContent = String(userCount);
