@@ -1,1 +1,0 @@
-{"version":3,"file":"ApplicationLoader.js","sourceRoot":"","sources":["../../src/ApplicationLoader.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,kBAAkB,EAAE,MAAM,yBAAyB,CAAC;AAE7D,MAAM,CAAC,gBAAgB,CAAC,kBAAkB,EAAE,GAAG,EAAE;IAC7C,MAAM,UAAU,GAAG,IAAI,kBAAkB,EAAE,CAAC;IAC5C,UAAU,CAAC,eAAe,EAAE,CAAC;AACjC,CAAC,CAAC,CAAC"}
