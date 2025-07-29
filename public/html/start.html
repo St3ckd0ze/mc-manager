@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Startseite - Goldfarmgang</title>
+
+  <!-- Monospace Schriftart -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#TmuxConsoleContainer {
+  width: 100%;
+  height: 60vh;          /* fast volle Höhe des Viewports */
+  padding: 10px 20px;
+  box-sizing: border-box;
+  margin: 0;
+  border-radius: 12px;
+  background-color: #1e1e2f;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#TmuxConsoleOutput {
+  width: 100%;
+  background-color: #2a2a40;
+  color: #c5c8c6;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  padding: 20px 15px;
+  border-radius: 12px;
+  border: 2px solid #444a7a;
+  box-sizing: border-box;
+  user-select: text;
+  overflow-y: auto;
+  
+  flex-grow: 1;          /* nimmt den gesamten verfügbaren Platz ein */
+  white-space: pre-wrap;
+  max-height: none;      /* keine Begrenzung, damit flex-grow wirkt */
+}
+
+#TmuxCommandInput {
+  flex-grow: 1;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 1.25rem;
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 2px solid #444a7a;
+  background-color: #2a2a40;
+  color: #c5c8c6;
+  box-sizing: border-box;
+  outline-offset: 2px;
+  transition: border-color 0.2s ease-in-out;
+  min-width: 0; /* wichtig, damit flex-grow richtig funktioniert */
+}
+
+#TmuxCommandInput:focus {
+  border-color: #6c79ff;
+  background-color: #3a3a57;
+}
+
+#TmuxCommandSend {
+  padding: 15px 30px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 1.25rem;
+  border-radius: 12px;
+  border: none;
+  background-color: #5a6cff;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+#TmuxCommandSend:hover {
+  background-color: #3f4ecc;
+}
+
+#TmuxCommandSend:active {
+  background-color: #2e3ca9;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  #TmuxConsoleContainer {
+    max-width: 100%;
+    padding: 15px;
+    height: 80vh;
+  }
+  #TmuxCommandInput, #TmuxCommandSend {
+    font-size: 1rem;
+  }
+  #TmuxCommandSend {
+    padding: 12px 20px;
+  }
+  #TmuxConsoleOutput {
+    font-size: 1rem;
+    max-height: none;
+  }
+}
+    </style>
+</head>
+
+<body class="bg-light">
+  <div id="TmuxConsoleContainer">
+    <pre id="TmuxConsoleOutput"></pre>
+    <input type="text" id="TmuxCommandInput" placeholder="Befehl eingeben..." />
+    <button id="TmuxCommandSend">Senden</button>
+</div>
+
+</body>
+</html>
