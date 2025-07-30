@@ -3,7 +3,7 @@ import { AbstractPOM } from "./AbstractPOM.js";
 
 export class StartPagePOM extends AbstractPOM {
     private listenersSet = false;
-    private tmuxUpdateIntervalId: number | null = null; // Intervall-ID speichern
+    private tmuxUpdateIntervalId: number | null = null;
 
     constructor(private appManager: ApplicationManager) {
         super();
@@ -12,7 +12,6 @@ export class StartPagePOM extends AbstractPOM {
     async loadPage(): Promise<void> {
         await AbstractPOM.showPage(`./html/start.html`);
 
-        // Begrüßung etc.
         const user = this.appManager.getLoggedInUser();
         const userCount = await this.appManager.getUserCount();
         const greeting = user ? `${user.firstName} ${user.lastName}` : "Guest";
@@ -29,19 +28,15 @@ export class StartPagePOM extends AbstractPOM {
         }
 
         const tmuxContainer = document.getElementById("TmuxConsoleContainer");
-
         if (tmuxContainer) {
             if (user?.role === "user") {
-                tmuxContainer.style.display = "none"; 
+                tmuxContainer.style.display = "none";
             } else {
                 tmuxContainer.style.display = "flex";
             }
         }
 
-        // TMUX Konsole + Eingabe holen
         const tmuxOutput = document.getElementById("TmuxConsoleOutput") as HTMLPreElement;
-
-        // Die Eingabe + Button gibt es nur, wenn Admin oder Manager ist
         const isPrivilegedUser = user?.role === "admin" || user?.role === "manager";
 
         let tmuxCommandInput: HTMLInputElement | null = null;
@@ -50,40 +45,30 @@ export class StartPagePOM extends AbstractPOM {
         if (isPrivilegedUser) {
             tmuxCommandInput = document.getElementById("TmuxCommandInput") as HTMLInputElement;
             tmuxCommandSend = document.getElementById("TmuxCommandSend") as HTMLButtonElement;
-            // Falls Eingabefeld/ Button im HTML fehlen, evtl. dynamisch erstellen
         } else {
-            // Für normale User: Eingabefeld und Button ausblenden, falls vorhanden
             const inputEl = document.getElementById("TmuxCommandInput");
             if (inputEl) inputEl.style.display = "none";
             const sendBtnEl = document.getElementById("TmuxCommandSend");
             if (sendBtnEl) sendBtnEl.style.display = "none";
         }
 
-        // Hilfsfunktion: tmux-Ausgabe laden und anzeigen
         const updateTmuxOutput = async () => {
             if (!tmuxOutput) return;
-
-            // Prüfen, ob User am unteren Rand ist (innerhalb 20px Toleranz)
             const isScrolledToBottom = (tmuxOutput.scrollHeight - tmuxOutput.clientHeight - tmuxOutput.scrollTop) < 20;
-
             const output = await this.appManager.getTmuxOutput();
             tmuxOutput.textContent = output;
-
             if (isScrolledToBottom) {
                 tmuxOutput.scrollTop = tmuxOutput.scrollHeight;
             }
         };
 
-        // Lade initial tmux-Ausgabe
         await updateTmuxOutput();
 
-        // Intervall nur einmal starten
         if (this.tmuxUpdateIntervalId === null) {
             this.tmuxUpdateIntervalId = window.setInterval(updateTmuxOutput, 3000);
         }
 
         if (!this.listenersSet) {
-            // Button klick handler: Befehl senden und Ausgabe aktualisieren (nur für privilegierte Nutzer)
             tmuxCommandSend?.addEventListener("click", async () => {
                 const command = tmuxCommandInput?.value.trim() ?? "";
                 if (command.length === 0) return;
@@ -92,7 +77,6 @@ export class StartPagePOM extends AbstractPOM {
                 await updateTmuxOutput();
             });
 
-            // Enter-Taste im Eingabefeld
             tmuxCommandInput?.addEventListener("keydown", async (e) => {
                 if (e.key === "Enter") {
                     e.preventDefault();
@@ -100,7 +84,6 @@ export class StartPagePOM extends AbstractPOM {
                 }
             });
 
-            // Sonstige Navigation
             document.getElementById("LinkLogout")!.addEventListener("click", () => {
                 this.appManager.logout();
                 this.appManager.loadLandingPage();
@@ -124,11 +107,17 @@ export class StartPagePOM extends AbstractPOM {
         }
     }
 
-    // Optional: Diese Methode solltest du beim Verlassen der Seite aufrufen, z.B. aus ApplicationManager
     async unloadPage(): Promise<void> {
+        // ⛔ Intervall stoppen
         if (this.tmuxUpdateIntervalId !== null) {
             clearInterval(this.tmuxUpdateIntervalId);
             this.tmuxUpdateIntervalId = null;
         }
+
+        // ✅ zurücksetzen
+        this.listenersSet = false;
+
+        // 🧹 optional: Inhalte löschen, falls nötig
+        this.clearPageContent();
     }
 }

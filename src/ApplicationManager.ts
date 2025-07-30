@@ -1,9 +1,11 @@
-import { User } from './domain/User.js'
-import { LandingPagePOM } from './pages/LandingPagePOM.js';
-import { StartPagePOM } from './pages/StartPagePOM.js';
-import { ImpressumPagePOM } from './pages/ImpressumPagePOM.js';
-import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
-import { BackupsPagePOM } from './pages/BackupsPOM.js';
+// ApplicationManager.ts
+import { AbstractPOM } from "./pages/AbstractPOM.js";
+import { StartPagePOM } from "./pages/StartPagePOM.js";
+import { BackupsPagePOM } from "./pages/BackupsPagePOM.js";
+import { LandingPagePOM } from "./pages/LandingPagePOM.js";
+import { ImpressumPagePOM } from "./pages/ImpressumPagePOM.js";
+import { UserManagementPagePOM } from "./pages/UserManagementPagePOM.js";
+import { User } from "./domain/User.js";
 
 export class ApplicationManager {
 
@@ -11,33 +13,54 @@ export class ApplicationManager {
     //users = new Map<string, User>();
     loggedInUser: User | undefined;
 
+    private startPage: StartPagePOM;
+    private backupsPage: BackupsPagePOM;
+    private landingPage: LandingPagePOM;
+    private impressumPage: ImpressumPagePOM;
+    private userManagementPage: UserManagementPagePOM;
+    
+
+    private currentPage: { loadPage(): Promise<void>; unloadPage(): Promise<void> } | null = null;
+
     constructor() {
+        this.startPage = new StartPagePOM(this);
+        this.backupsPage = new BackupsPagePOM(this);
+        this.landingPage = new LandingPagePOM(this);
+        this.impressumPage = new ImpressumPagePOM(this);
+        this.userManagementPage = new UserManagementPagePOM(this);
     }
 
-    loadLandingPage() {
-        new LandingPagePOM(this).loadPage();
-        this.updateMenuExtras();
+    async showPage(pom: AbstractPOM): Promise<void> {
+        if (this.currentPage && this.currentPage !== pom) {
+            await this.currentPage.unloadPage?.();
+        }
+        this.currentPage = pom;
+        await pom.loadPage();
     }
 
-    loadStartPage() {
-        new StartPagePOM(this).loadPage();
-        this.updateMenuExtras();
-    }
-    
-    loadImpressumPage() {
-        new ImpressumPagePOM(this).loadPage();
-        this.updateMenuExtras();
-    }
-    
-    loadUserManagementPage() {
-        new UserManagementPagePOM(this).loadPage();
-            this.updateMenuExtras();
+    async loadStartPage(): Promise<void> {
+        await this.showPage(this.startPage);
     }
 
-    loadBackupsPage() {
-        new BackupsPagePOM(this).loadPage();
-        this.updateMenuExtras();
+    async loadBackupsPage(): Promise<void> {
+        await this.showPage(this.backupsPage);
     }
+
+    async loadLandingPage(): Promise<void> {
+        await this.showPage(this.landingPage);
+    }
+
+    async loadImpressumPage(): Promise<void> {
+        await this.showPage(this.impressumPage);
+    }
+
+    async loadUserManagementPage(): Promise<void> {
+        await this.showPage(this.userManagementPage);
+    }
+
+    // ... (deine anderen Methoden wie login, logout, getTmuxOutput, etc.)
+
+
     
     async addUser(userID: string, firstName: string, lastName: string, password: string): Promise<boolean> {
         const response = await fetch('/api/users', {

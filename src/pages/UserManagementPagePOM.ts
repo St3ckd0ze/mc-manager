@@ -2,83 +2,148 @@ import { ApplicationManager } from "../ApplicationManager.js";
 import { AbstractPOM } from "./AbstractPOM.js";
 
 export class UserManagementPagePOM extends AbstractPOM {
+    private addButton?: HTMLButtonElement;
+    private deleteButtons: Map<string, HTMLButtonElement> = new Map();
+    private editButtons: Map<string, HTMLButtonElement> = new Map();
+
+    // Listener-Refs, damit wir sie beim unload entfernen können
+    private addButtonListener?: EventListener;
+    private deleteButtonListeners: Map<string, EventListener> = new Map();
+    private editButtonListeners: Map<string, EventListener> = new Map();
+
     constructor(private appManager: ApplicationManager) {
         super();
     }
 
     async loadPage(): Promise<void> {
-      
-    await AbstractPOM.showPage("./html/user-management.html");
+        // Seite laden
+        await AbstractPOM.showPage("./html/user-management.html");
 
-    this.clearPageContent();
+        // Tabelle leeren
+        const tbody = document.getElementById("UserTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
 
-    const users = await this.appManager.getUsers();
-    const tbody = document.getElementById("UserTableBody");
-    if (tbody) tbody.innerHTML = "";
+        const users = await this.appManager.getUsers();
 
-    users.forEach((user) => {
-        const row = document.createElement("tr");
+        // Buttons vorher zurücksetzen (falls reload)
+        this.deleteButtons.clear();
+        this.editButtons.clear();
+        this.deleteButtonListeners.clear();
+        this.editButtonListeners.clear();
 
-        const tdUserID = document.createElement("td");
-        tdUserID.id = `${user.userID}TableItemUsername`;
-        tdUserID.textContent = user.userID;
+        // Tabelle befüllen
+        users.forEach(user => {
+            const row = document.createElement("tr");
 
-        const tdFirstName = document.createElement("td");
-        tdFirstName.id = `${user.userID}TableItemFirstName`;
-        tdFirstName.textContent = user.firstName;
+            const tdUserID = document.createElement("td");
+            tdUserID.id = `${user.userID}TableItemUsername`;
+            tdUserID.textContent = user.userID;
 
-        const tdLastName = document.createElement("td");
-        tdLastName.id = `${user.userID}TableItemLastName`;
-        tdLastName.textContent = user.lastName;
+            const tdFirstName = document.createElement("td");
+            tdFirstName.id = `${user.userID}TableItemFirstName`;
+            tdFirstName.textContent = user.firstName;
 
-        const tdActions = document.createElement("td");
+            const tdLastName = document.createElement("td");
+            tdLastName.id = `${user.userID}TableItemLastName`;
+            tdLastName.textContent = user.lastName;
 
-        const editButton = document.createElement("button");
-        editButton.type = "button";
-        editButton.className = "btn btn-success me-2";
-        editButton.id = `${user.userID}TableItemEditButton`;
-        editButton.textContent = "Edit";
+            const tdActions = document.createElement("td");
 
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "btn btn-danger me-2";
-        deleteButton.id = `${user.userID}TableItemDeleteButton`;
-        deleteButton.textContent = "Delete";
+            const editButton = document.createElement("button");
+            editButton.type = "button";
+            editButton.className = "btn btn-success me-2";
+            editButton.id = `${user.userID}TableItemEditButton`;
+            editButton.textContent = "Edit";
 
-        const addButton = document.getElementById("ButtonAddUser")
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "btn btn-danger me-2";
+            deleteButton.id = `${user.userID}TableItemDeleteButton`;
+            deleteButton.textContent = "Delete";
 
-        tdActions.appendChild(editButton);
-        tdActions.appendChild(deleteButton);
+            tdActions.appendChild(editButton);
+            tdActions.appendChild(deleteButton);
 
-        row.appendChild(tdUserID);
-        row.appendChild(tdFirstName);
-        row.appendChild(tdLastName);
-        row.appendChild(tdActions);
-        tbody?.appendChild(row);
+            row.appendChild(tdUserID);
+            row.appendChild(tdFirstName);
+            row.appendChild(tdLastName);
+            row.appendChild(tdActions);
 
-        deleteButton.addEventListener("click", async () =>  {
-            await this.appManager.deleteUser(user.userID);
-            await this.loadPage();
+            tbody.appendChild(row);
+
+            // Speichern für späteres Entfernen der Listener
+            this.deleteButtons.set(user.userID, deleteButton);
+            this.editButtons.set(user.userID, editButton);
         });
 
-        addButton?.addEventListener("click", async () =>  {
+        // Add-User Button holen (nur einmal)
+        this.addButton = document.getElementById("ButtonAddUser") as HTMLButtonElement | undefined;
 
-            const pageContent = document.getElementById("UserManagementPage")
-            if(pageContent) pageContent.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-            <div class="card shadow p-4" style="min-width: 300px; max-width: 400px; width: 100%;">
+        // Listener registrieren (vorher evtl. alte entfernen)
+        this.registerEventListeners(users);
+    }
+
+    private registerEventListeners(users: { userID: string; firstName: string; lastName: string; password?: string }[]) {
+        // Delete Buttons
+        this.deleteButtons.forEach((btn, userID) => {
+            // Listener Funktion
+            const deleteListener = async () => {
+                await this.appManager.deleteUser(userID);
+                await this.loadPage();
+            };
+            // Alte Listener entfernen, falls vorhanden
+            const oldListener = this.deleteButtonListeners.get(userID);
+            if (oldListener) btn.removeEventListener("click", oldListener);
+
+            btn.addEventListener("click", deleteListener);
+            this.deleteButtonListeners.set(userID, deleteListener);
+        });
+
+        // Edit Buttons
+        this.editButtons.forEach((btn, userID) => {
+            // Listener Funktion
+            const editListener = () => {
+                this.showEditUserForm(userID);
+            };
+
+            const oldListener = this.editButtonListeners.get(userID);
+            if (oldListener) btn.removeEventListener("click", oldListener);
+
+            btn.addEventListener("click", editListener);
+            this.editButtonListeners.set(userID, editListener);
+        });
+
+        // Add User Button
+        if (this.addButton) {
+            // Alten Listener entfernen, falls vorhanden
+            if (this.addButtonListener) {
+                this.addButton.removeEventListener("click", this.addButtonListener);
+            }
+            this.addButtonListener = () => this.showAddUserForm();
+            this.addButton.addEventListener("click", this.addButtonListener);
+        }
+    }
+
+    private showAddUserForm() {
+        const pageContent = document.getElementById("UserManagementPage");
+        if (!pageContent) return;
+
+        pageContent.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+          <div class="card shadow p-4" style="min-width: 300px; max-width: 400px; width: 100%;">
             <form id="FormAddUser" style="display:block;">
               <h3 class="text-center mb-3">Nutzer hinzufügen</h3>
               <div class="mb-3">
                 <input id="FormAddUserUsername" type="text" class="form-control" placeholder="User ID">
               </div>
               <div class="mb-3">
-              <div class="input-group">
-                <input id="FormAddUserPassword" type="password" class="form-control" placeholder="Password">
-                <span class="input-group-text" id="ToggleSignupPassword" style="cursor: pointer;">
-                  <i class="bi bi-eye"></i>
-                </span>
-              </div>
+                <div class="input-group">
+                  <input id="FormAddUserPassword" type="password" class="form-control" placeholder="Password">
+                  <span class="input-group-text" id="ToggleSignupPassword" style="cursor: pointer;">
+                    <i class="bi bi-eye"></i>
+                  </span>
+                </div>
               </div>
               <div class="mb-3">
                 <input id="FormAddUserFirstName" type="text" class="form-control" placeholder="First Name">
@@ -92,78 +157,82 @@ export class UserManagementPagePOM extends AbstractPOM {
               <div class="d-grid mb-2">
                 <button type="button" id="FormAddUserCancel" class="btn btn-secondary">Abbrechen</button>
               </div>
-              </form>
-              </div>
-              </div>`
+            </form>
+          </div>
+        </div>`;
 
-              
-                const toggle = document.getElementById("ToggleSignupPassword");
-                const input = document.getElementById("FormAddUserPassword") as HTMLInputElement;
+        // Passwort-Toggle
+        const toggle = document.getElementById("ToggleSignupPassword");
+        const input = document.getElementById("FormAddUserPassword") as HTMLInputElement;
 
-                toggle?.addEventListener("click", () => {
-                  const icon = toggle.querySelector("i");
-                  if (input.type === "password") {
-                    input.type = "text";
-                    icon?.classList.remove("bi-eye");
-                    icon?.classList.add("bi-eye-slash");
-                  } else {
-                    input.type = "password";
-                    icon?.classList.remove("bi-eye-slash");
-                    icon?.classList.add("bi-eye");
-                  }
-                });
-            
-                document.getElementById("FormAddUserCancel")!.addEventListener("click", async () => {
-                    await this.loadPage();
-                });
-            
-            
+        const toggleHandler = () => {
+            const icon = toggle?.querySelector("i");
+            if (input.type === "password") {
+                input.type = "text";
+                icon?.classList.remove("bi-eye");
+                icon?.classList.add("bi-eye-slash");
+            } else {
+                input.type = "password";
+                icon?.classList.remove("bi-eye-slash");
+                icon?.classList.add("bi-eye");
+            }
+        };
+        toggle?.addEventListener("click", toggleHandler);
 
-                document.getElementById("FormAddUserSubmit")!.addEventListener("click", async () => {
+        // Cancel Button
+        const cancelBtn = document.getElementById("FormAddUserCancel");
+        cancelBtn?.addEventListener("click", async () => {
+            await this.loadPage();
+        });
 
-                const signupForm = document.getElementById("FormAddUser") as HTMLFormElement;
-                const username = (document.getElementById("FormAddUserUsername") as HTMLInputElement).value.trim();
-                const password = (document.getElementById("FormAddUserPassword") as HTMLInputElement).value.trim();
-                const firstName = (document.getElementById("FormAddUserFirstName") as HTMLInputElement).value.trim();
-                const lastName = (document.getElementById("FormAddUserLastName") as HTMLInputElement).value.trim();
+        // Submit Button
+        const submitBtn = document.getElementById("FormAddUserSubmit");
+        submitBtn?.addEventListener("click", async () => {
+            const username = (document.getElementById("FormAddUserUsername") as HTMLInputElement).value.trim();
+            const password = (document.getElementById("FormAddUserPassword") as HTMLInputElement).value.trim();
+            const firstName = (document.getElementById("FormAddUserFirstName") as HTMLInputElement).value.trim();
+            const lastName = (document.getElementById("FormAddUserLastName") as HTMLInputElement).value.trim();
 
-                if (!username || !password) {
-                    this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
-                    return;
-                }
-                
-                const success = await this.appManager.addUser(username, firstName, lastName, password);
-                
-                if (success) {
-                    this.showToast("User erfolgreich registriert.", true);
-                    signupForm.reset();
-                    await this.loadPage();
-                } 
-                else {
-                    this.showToast("User ID existiert bereits.", false);
-                }
+            if (!username || !password) {
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
+                return;
+            }
 
-            });
-          });
+            const success = await this.appManager.addUser(username, firstName, lastName, password);
+            if (success) {
+                this.showToast("User erfolgreich registriert.", true);
+                await this.loadPage();
+            } else {
+                this.showToast("User ID existiert bereits.", false);
+            }
+        });
+    }
 
-          editButton?.addEventListener("click", () => {
+    private async showEditUserForm(userID: string) {
+        const user = (await this.appManager.getUsers()).find(u => u.userID === userID);
+        if (!user) {
+            this.showToast("User nicht gefunden.", false);
+            return;
+        }
 
-            const pageContent = document.getElementById("UserManagementPage")
-            if(pageContent) pageContent.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-            <div class="card shadow p-4" style="min-width: 300px; max-width: 400px; width: 100%;">
+        const pageContent = document.getElementById("UserManagementPage");
+        if (!pageContent) return;
+
+        pageContent.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+          <div class="card shadow p-4" style="min-width: 300px; max-width: 400px; width: 100%;">
             <form id="FormEditUser" style="display:block;">
               <h3 class="text-center mb-3">Nutzer bearbeiten</h3>
               <div class="mb-3">
-                <input id="FormEditUserUsername" type="text" class="form-control" placeholder="User ID">
+                <input id="FormEditUserUsername" type="text" class="form-control" placeholder="User ID" readonly>
               </div>
               <div class="mb-3">
-              <div class="input-group">
-                <input id="FormEditUserPassword" type="password" class="form-control" placeholder="Password">
-                <span class="input-group-text" id="ToggleEditPassword" style="cursor: pointer;">
-                  <i class="bi bi-eye"></i>
-                </span>
-              </div>
+                <div class="input-group">
+                  <input id="FormEditUserPassword" type="password" class="form-control" placeholder="Password">
+                  <span class="input-group-text" id="ToggleEditPassword" style="cursor: pointer;">
+                    <i class="bi bi-eye"></i>
+                  </span>
+                </div>
               </div>
               <div class="mb-3">
                 <input id="FormEditUserFirstName" type="text" class="form-control" placeholder="First Name">
@@ -177,73 +246,89 @@ export class UserManagementPagePOM extends AbstractPOM {
               <div class="d-grid mb-2">
                 <button type="button" id="FormEditUserCancel" class="btn btn-secondary">Abbrechen</button>
               </div>
-              </form>
-              </div>
-              </div>`
+            </form>
+          </div>
+        </div>`;
 
-                const usernameInput = document.getElementById("FormEditUserUsername") as HTMLInputElement;
-                const firstNameInput = document.getElementById("FormEditUserFirstName") as HTMLInputElement;
-                const lastNameInput = document.getElementById("FormEditUserLastName") as HTMLInputElement;
-                const passwordInput = document.getElementById("FormEditUserPassword") as HTMLInputElement;
-                usernameInput.value = user.userID;
-                firstNameInput.value = user.firstName;
-                lastNameInput.value = user.lastName;
-                passwordInput.value = user.password;
+        // Formularwerte setzen
+        (document.getElementById("FormEditUserUsername") as HTMLInputElement).value = user.userID;
+        (document.getElementById("FormEditUserFirstName") as HTMLInputElement).value = user.firstName;
+        (document.getElementById("FormEditUserLastName") as HTMLInputElement).value = user.lastName;
+        // Password leer lassen, user.password soll nicht im Klartext da sein!
 
-              
-                const toggle = document.getElementById("ToggleEditPassword");
-                const input = document.getElementById("FormEditUserPassword") as HTMLInputElement;
+        // Passwort-Toggle
+        const toggle = document.getElementById("ToggleEditPassword");
+        const input = document.getElementById("FormEditUserPassword") as HTMLInputElement;
 
-                toggle?.addEventListener("click", () => {
-                  const icon = toggle.querySelector("i");
-                  if (input.type === "password") {
-                    input.type = "text";
-                    icon?.classList.remove("bi-eye");
-                    icon?.classList.add("bi-eye-slash");
-                  } else {
-                    input.type = "password";
-                    icon?.classList.remove("bi-eye-slash");
-                    icon?.classList.add("bi-eye");
-                  }
-                });
-            
-                document.getElementById("FormEditUserCancel")!.addEventListener("click", async () => {
-                    await this.loadPage();
-                });
-            
-            
+        const toggleHandler = () => {
+            const icon = toggle?.querySelector("i");
+            if (input.type === "password") {
+                input.type = "text";
+                icon?.classList.remove("bi-eye");
+                icon?.classList.add("bi-eye-slash");
+            } else {
+                input.type = "password";
+                icon?.classList.remove("bi-eye-slash");
+                icon?.classList.add("bi-eye");
+            }
+        };
+        toggle?.addEventListener("click", toggleHandler);
 
-                document.getElementById("FormEditUserSubmit")!.addEventListener("click", async () => {
-
-                const editForm = document.getElementById("FormEditUser") as HTMLFormElement;
-                const username = (document.getElementById("FormEditUserUsername") as HTMLInputElement).value.trim();
-                const password = (document.getElementById("FormEditUserPassword") as HTMLInputElement).value.trim();
-                const firstName = (document.getElementById("FormEditUserFirstName") as HTMLInputElement).value.trim();
-                const lastName = (document.getElementById("FormEditUserLastName") as HTMLInputElement).value.trim();
-
-                if (!username || !password) {
-                    this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
-                    return;
-                }
-                
-                const success = await this.appManager.editUser(username, firstName, lastName, password);
-                
-                if (success) {
-                    this.showToast("User erfolgreich geändert.", true);
-                    editForm.reset();
-                    await this.loadPage();
-                } 
-                else {
-                    this.showToast("User ID existiert nicht.", false);
-                }
-
-            });
-          });
-
-
+        // Cancel Button
+        const cancelBtn = document.getElementById("FormEditUserCancel");
+        cancelBtn?.addEventListener("click", async () => {
+            await this.loadPage();
         });
-        
+
+        // Submit Button
+        const submitBtn = document.getElementById("FormEditUserSubmit");
+        submitBtn?.addEventListener("click", async () => {
+            const username = (document.getElementById("FormEditUserUsername") as HTMLInputElement).value.trim();
+            const password = (document.getElementById("FormEditUserPassword") as HTMLInputElement).value.trim();
+            const firstName = (document.getElementById("FormEditUserFirstName") as HTMLInputElement).value.trim();
+            const lastName = (document.getElementById("FormEditUserLastName") as HTMLInputElement).value.trim();
+
+            if (!username || !password) {
+                this.showToast("User ID und Passwort dürfen nicht leer sein.", false);
+                return;
+            }
+
+            const success = await this.appManager.editUser(username, firstName, lastName, password);
+            if (success) {
+                this.showToast("User erfolgreich aktualisiert.", true);
+                await this.loadPage();
+            } else {
+                this.showToast("Fehler beim Aktualisieren.", false);
+            }
+        });
     }
 
+    // Diese Funktion zum Aufräumen, wenn Seite verlassen wird
+    async unloadPage(): Promise<void> {
+        // Delete Button Listener entfernen
+        this.deleteButtons.forEach((btn, userID) => {
+            const listener = this.deleteButtonListeners.get(userID);
+            if (listener) btn.removeEventListener("click", listener);
+        });
+        this.deleteButtonListeners.clear();
+        this.deleteButtons.clear();
 
+        // Edit Button Listener entfernen
+        this.editButtons.forEach((btn, userID) => {
+            const listener = this.editButtonListeners.get(userID);
+            if (listener) btn.removeEventListener("click", listener);
+        });
+        this.editButtonListeners.clear();
+        this.editButtons.clear();
+
+        // Add Button Listener entfernen
+        if (this.addButton && this.addButtonListener) {
+            this.addButton.removeEventListener("click", this.addButtonListener);
+            this.addButtonListener = undefined;
+        }
+
+        // Inhalt leeren
+        const pageContent = document.getElementById("UserManagementPage");
+        if (pageContent) pageContent.innerHTML = "";
+    }
 }

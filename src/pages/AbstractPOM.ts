@@ -1,4 +1,6 @@
 export abstract class AbstractPOM {
+    abstract loadPage(): Promise<void>;
+    abstract unloadPage(): Promise<void>;
 
     clearPageContent() {
         const pageContent = document.getElementById("PageContent");
@@ -48,4 +50,5 @@ export abstract class AbstractPOM {
             console.error("Failed to showPage with path: " + path);
         }
     }
+
 }
