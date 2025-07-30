@@ -89,7 +89,7 @@ export class BackupsPagePOM extends AbstractPOM {
         const nameSpan = document.createElement("span");
         nameSpan.textContent = item.name;
         nameSpan.style.cursor = item.isDirectory ? "pointer" : "default";
-        nameSpan.style.color = item.isDirectory ? "#ffffff" : "#dddddd";
+        nameSpan.style.color = item.isDirectory ? "#ffffff" : "#ffffff";
         nameSpan.style.fontWeight = item.isDirectory ? "bold" : "normal";
         nameSpan.onmouseenter = () => {
             if (item.isDirectory) nameSpan.style.textDecoration = "underline";
@@ -151,10 +151,27 @@ export class BackupsPagePOM extends AbstractPOM {
             li.appendChild(buttonGroup);
         }
 
+        if (!item.isDirectory && typeof item.size === "number") {
+            const sizeSpan = document.createElement("span");
+            sizeSpan.textContent = this.formatFileSize(item.size);
+            sizeSpan.style.marginLeft = "auto";
+            sizeSpan.style.color = "#ffffffff";
+            sizeSpan.style.fontSize = "0.9em";
+            sizeSpan.style.paddingRight = "10px";
+            li.insertBefore(sizeSpan, li.lastElementChild); // vor Buttons einfügen
+        }
+
         ul.appendChild(li);
     }
 
     container.appendChild(ul);
 }
+
+    private formatFileSize(size: number): string {
+        const i = size === 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+        const sizes = ["B", "KB", "MB", "GB", "TB"];
+        return (size / Math.pow(1024, i)).toFixed(1) + " " + sizes[i];
+    }
+
 
 }

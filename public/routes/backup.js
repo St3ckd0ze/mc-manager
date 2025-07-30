@@ -7,8 +7,8 @@ const router = express.Router();
 
 const rootPath = '/mnt/backup/minecraft_backups';
 
-// Route: Liste Dateien und Ordner
-router.get('/list', (req, res) => {
+// Route: Liste Dateien und Ordner inkl. Dateigröße
+router.get('/list', async (req, res) => {
     const subPath = req.query.path || '';
     const absPath = path.join(rootPath, subPath);
 
@@ -16,20 +16,36 @@ router.get('/list', (req, res) => {
         return res.status(400).json({ error: 'Ungültiger Pfad' });
     }
 
-    fs.readdir(absPath, { withFileTypes: true }, (err, files) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Fehler beim Lesen des Verzeichnisses' });
-        }
+    try {
+        const files = await fsp.readdir(absPath, { withFileTypes: true });
 
-        const entries = files.map(f => ({
-            name: f.name,
-            isDirectory: f.isDirectory()
+        const entries = await Promise.all(files.map(async (f) => {
+            const entryPath = path.join(absPath, f.name);
+            let size = null;
+
+            if (f.isFile()) {
+                try {
+                    const stats = await fsp.stat(entryPath);
+                    size = stats.size; // Größe in Bytes
+                } catch (err) {
+                    console.error(`Fehler beim Lesen der Größe von ${entryPath}:`, err);
+                }
+            }
+
+            return {
+                name: f.name,
+                isDirectory: f.isDirectory(),
+                size // null bei Ordnern
+            };
         }));
 
         res.json({ path: subPath, entries });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Fehler beim Lesen des Verzeichnisses' });
+    }
 });
+
 
 // Route: Download einzelner Dateien
 router.get('/download', (req, res) => {
