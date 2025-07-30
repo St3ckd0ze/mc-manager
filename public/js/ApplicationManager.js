@@ -3,6 +3,7 @@ import { LandingPagePOM } from './pages/LandingPagePOM.js';
 import { StartPagePOM } from './pages/StartPagePOM.js';
 import { ImpressumPagePOM } from './pages/ImpressumPagePOM.js';
 import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
+import { BackupsPagePOM } from './pages/BackupsPOM.js';
 export class ApplicationManager {
     loginCount = 0;
     //users = new Map<string, User>();
@@ -23,6 +24,10 @@ export class ApplicationManager {
     }
     loadUserManagementPage() {
         new UserManagementPagePOM(this).loadPage();
+        this.updateMenuExtras();
+    }
+    loadBackupsPage() {
+        new BackupsPagePOM(this).loadPage();
         this.updateMenuExtras();
     }
     async addUser(userID, firstName, lastName, password) {
@@ -64,6 +69,8 @@ export class ApplicationManager {
     }
     logout() {
         this.loggedInUser = undefined;
+        this.updateMenuExtras();
+        this.loadLandingPage();
     }
     isLoggedIn() {
         if (this.loggedInUser != undefined) {
@@ -116,6 +123,7 @@ export class ApplicationManager {
         logoutButton.onclick = () => {
             this.logout();
             this.loadLandingPage();
+            document.getElementById("nav-backup").style.display = "none";
         };
         logoutLi.appendChild(logoutButton);
         menuExtras.appendChild(logoutLi);
@@ -131,6 +139,9 @@ export class ApplicationManager {
             userMgmtLink.onclick = () => this.loadUserManagementPage();
             userMgmtLi.appendChild(userMgmtLink);
             navBarList.appendChild(userMgmtLi);
+        }
+        if (this.loggedInUser?.role === 'admin' || this.loggedInUser?.role === 'manager') {
+            document.getElementById("nav-backup").style.display = "block";
         }
     }
     async getUsers() {

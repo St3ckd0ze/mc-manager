@@ -3,6 +3,7 @@ import { LandingPagePOM } from './pages/LandingPagePOM.js';
 import { StartPagePOM } from './pages/StartPagePOM.js';
 import { ImpressumPagePOM } from './pages/ImpressumPagePOM.js';
 import { UserManagementPagePOM } from './pages/UserManagementPagePOM.js';
+import { BackupsPagePOM } from './pages/BackupsPOM.js';
 
 export class ApplicationManager {
 
@@ -31,6 +32,11 @@ export class ApplicationManager {
     loadUserManagementPage() {
         new UserManagementPagePOM(this).loadPage();
             this.updateMenuExtras();
+    }
+
+    loadBackupsPage() {
+        new BackupsPagePOM(this).loadPage();
+        this.updateMenuExtras();
     }
     
     async addUser(userID: string, firstName: string, lastName: string, password: string): Promise<boolean> {
@@ -79,6 +85,8 @@ export class ApplicationManager {
 
     logout() {
         this.loggedInUser = undefined;
+        this.updateMenuExtras();
+        this.loadLandingPage();
     }
 
     isLoggedIn(): boolean {
@@ -143,6 +151,7 @@ export class ApplicationManager {
     logoutButton.onclick = () => {
         this.logout();
         this.loadLandingPage();
+        document.getElementById("nav-backup")!.style.display = "none";
     };
 
     logoutLi.appendChild(logoutButton);
@@ -164,6 +173,10 @@ export class ApplicationManager {
         userMgmtLi.appendChild(userMgmtLink);
         navBarList.appendChild(userMgmtLi);
     }
+
+    if (this.loggedInUser?.role === 'admin' || this.loggedInUser?.role === 'manager') {
+    document.getElementById("nav-backup")!.style.display = "block";
+}
 }
 
 

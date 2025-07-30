@@ -2,6 +2,9 @@ import { ApplicationManager } from "../ApplicationManager.js";
 import { AbstractPOM } from "./AbstractPOM.js";
 
 export class StartPagePOM extends AbstractPOM {
+    private listenersSet = false;
+    private tmuxUpdateIntervalId: number | null = null; // Intervall-ID speichern
+
     constructor(private appManager: ApplicationManager) {
         super();
     }
@@ -28,11 +31,11 @@ export class StartPagePOM extends AbstractPOM {
         const tmuxContainer = document.getElementById("TmuxConsoleContainer");
 
         if (tmuxContainer) {
-        if (user?.role === "user") {
-            tmuxContainer.style.display = "none"; 
-        } else {
-            tmuxContainer.style.display = "flex";
-        }
+            if (user?.role === "user") {
+                tmuxContainer.style.display = "none"; 
+            } else {
+                tmuxContainer.style.display = "flex";
+            }
         }
 
         // TMUX Konsole + Eingabe holen
@@ -74,38 +77,58 @@ export class StartPagePOM extends AbstractPOM {
         // Lade initial tmux-Ausgabe
         await updateTmuxOutput();
 
-        // Optionale automatische Aktualisierung alle paar Sekunden (z.B. alle 3 Sekunden)
-        setInterval(updateTmuxOutput, 3000);
+        // Intervall nur einmal starten
+        if (this.tmuxUpdateIntervalId === null) {
+            this.tmuxUpdateIntervalId = window.setInterval(updateTmuxOutput, 3000);
+        }
 
-        // Button klick handler: Befehl senden und Ausgabe aktualisieren (nur für privilegierte Nutzer)
-        tmuxCommandSend?.addEventListener("click", async () => {
-            const command = tmuxCommandInput?.value.trim() ?? "";
-            if (command.length === 0) return;
-            await this.appManager.sendTmuxCommand(command);
-            if (tmuxCommandInput) tmuxCommandInput.value = "";
-            await updateTmuxOutput();
-        });
+        if (!this.listenersSet) {
+            // Button klick handler: Befehl senden und Ausgabe aktualisieren (nur für privilegierte Nutzer)
+            tmuxCommandSend?.addEventListener("click", async () => {
+                const command = tmuxCommandInput?.value.trim() ?? "";
+                if (command.length === 0) return;
+                await this.appManager.sendTmuxCommand(command);
+                if (tmuxCommandInput) tmuxCommandInput.value = "";
+                await updateTmuxOutput();
+            });
 
-        // Enter-Taste im Eingabefeld
-        tmuxCommandInput?.addEventListener("keydown", async (e) => {
-            if (e.key === "Enter") {
+            // Enter-Taste im Eingabefeld
+            tmuxCommandInput?.addEventListener("keydown", async (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    tmuxCommandSend?.click();
+                }
+            });
+
+            // Sonstige Navigation
+            document.getElementById("LinkLogout")!.addEventListener("click", () => {
+                this.appManager.logout();
+                this.appManager.loadLandingPage();
+            });
+
+            document.getElementById("LinkImpressum")!.addEventListener("click", () => {
+                this.appManager.loadImpressumPage();
+            });
+
+            document.getElementById("LinkUserManagement")?.addEventListener("click", (e) => {
                 e.preventDefault();
-                tmuxCommandSend?.click();
-            }
-        });
+                this.appManager.loadUserManagementPage();
+            });
 
-        // Sonstige Navigation
-        document.getElementById("LinkLogout")!.addEventListener("click", () => {
-            this.appManager.logout();
-            this.appManager.loadLandingPage();
-        });
+            document.getElementById("nav-backup")?.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.appManager.loadBackupsPage();
+            });
 
-        document.getElementById("LinkImpressum")!.addEventListener("click", () => {
-            this.appManager.loadImpressumPage();
-        });
+            this.listenersSet = true;
+        }
+    }
 
-        document.getElementById("LinkUserManagement")!.addEventListener("click", () => {
-            this.appManager.loadUserManagementPage();
-        });
+    // Optional: Diese Methode solltest du beim Verlassen der Seite aufrufen, z.B. aus ApplicationManager
+    async unloadPage(): Promise<void> {
+        if (this.tmuxUpdateIntervalId !== null) {
+            clearInterval(this.tmuxUpdateIntervalId);
+            this.tmuxUpdateIntervalId = null;
+        }
     }
 }

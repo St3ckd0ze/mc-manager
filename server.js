@@ -1,11 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const backupRoutes = require('./public/routes/backup.js');
 const app = express();
 const PORT = 3010;
 
 // Statische Ordner freigeben
 app.use(express.static('public'));
 app.use('/dist', express.static('dist'));
+app.use('/api/backup', backupRoutes);
+console.log("Backup-Routen wurden registriert");
+
+
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server gestartet auf Port: http://0.0.0.0:${PORT}`);
@@ -177,15 +182,15 @@ app.post('/api/tmux/command', (req, res) => {
 
 // GET /api/tmux/output
 app.get('/api/tmux/output', (req, res) => {
-    // Ausgabe des Panes in mc_session holen (Fenster 0, Pane 0, letzte 100 Zeilen)
-    exec('tmux capture-pane -t mc_session:0.0 -p -S -100', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Fehler beim Abrufen der Ausgabe: ${error.message}`);
-            return res.status(500).json({ error: error.message });
-        }
-        if (stderr) {
-            console.error(`Stderr: ${stderr}`);
-        }
-        res.status(200).json({ output: stdout });
-    });
+  exec('tmux capture-pane -t mc_session:0.0 -p -S -100', (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error executing tmux command:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    if (stderr) {
+      console.error('tmux stderr:', stderr);
+    }
+    res.json({ output: stdout });
+  });
 });
+
