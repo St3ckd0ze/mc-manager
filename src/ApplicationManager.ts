@@ -28,6 +28,8 @@ export class ApplicationManager {
         this.landingPage = new LandingPagePOM(this);
         this.impressumPage = new ImpressumPagePOM(this);
         this.userManagementPage = new UserManagementPagePOM(this);
+        this.startBackgroundUpdater();
+        this.startAutoSaveAll();
     }
 
     async showPage(pom: AbstractPOM): Promise<void> {
@@ -57,8 +59,6 @@ export class ApplicationManager {
     async loadUserManagementPage(): Promise<void> {
         await this.showPage(this.userManagementPage);
     }
-
-    // ... (deine anderen Methoden wie login, logout, getTmuxOutput, etc.)
 
 
     
@@ -113,10 +113,7 @@ export class ApplicationManager {
     }
 
     isLoggedIn(): boolean {
-        if(this.loggedInUser != undefined) {
-            return true;
-        }
-        return false;
+    return this.loggedInUser !== undefined;
     }
 
     getLoggedInUser(): User | undefined {
@@ -197,9 +194,15 @@ export class ApplicationManager {
         navBarList.appendChild(userMgmtLi);
     }
 
-    if (this.loggedInUser?.role === 'admin' || this.loggedInUser?.role === 'manager') {
-    document.getElementById("nav-backup")!.style.display = "block";
-}
+    const navBackup = document.getElementById("nav-backup");
+        if (!navBackup) return;
+
+        if (this.loggedInUser?.role === 'admin' || this.loggedInUser?.role === 'manager') {
+            navBackup.style.display = "block";
+        } else {
+            navBackup.style.display = "none";
+        }
+
 }
 
 
@@ -259,56 +262,134 @@ export class ApplicationManager {
     }
 
     async sendTmuxCommand(command: string): Promise<void> {
-    if (!this.loggedInUser) {
-        console.error("Kein User eingeloggt");
-        return;
-    }
-
-    // Nur admin und manager dürfen Befehle senden
-    if (this.loggedInUser.role !== 'admin' && this.loggedInUser.role !== 'manager') {
-        console.error("User hat keine Berechtigung Befehle zu senden");
-        return;
-    }
-
-    try {
-        const response = await fetch("/api/tmux/command", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ command })
-        });
-
-        if (!response.ok) {
-            console.error("Fehler beim Senden des tmux-Befehls:", response.statusText);
-        } else {
-            console.log("Befehl erfolgreich gesendet:", command);
+        if (!this.loggedInUser) {
+            console.error("Kein User eingeloggt");
+            return;
         }
-    } catch (error) {
-        console.error("Fehler beim Senden des tmux-Befehls:", error);
-    }
-}
 
-async getTmuxOutput(): Promise<string> {
-    try {
-        const response = await fetch("/api/tmux/output", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
+        // Nur admin und manager dürfen Befehle senden
+        if (this.loggedInUser.role !== 'admin' && this.loggedInUser.role !== 'manager') {
+            console.error("User hat keine Berechtigung Befehle zu senden");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/tmux/command", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ command })
+            });
+
+            if (!response.ok) {
+                console.error("Fehler beim Senden des tmux-Befehls:", response.statusText);
+            } else {
+                
             }
-        });
+        } catch (error) {
+            console.error("Fehler beim Senden des tmux-Befehls:", error);
+        }
+    }
 
-        if (!response.ok) {
-            console.error("Fehler beim Abrufen der tmux-Ausgabe:", response.statusText);
+    async getTmuxOutput(): Promise<string> {
+        try {
+            const response = await fetch("/api/tmux/output", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!response.ok) {
+                console.error("Fehler beim Abrufen der tmux-Ausgabe:", response.statusText);
+                return "";
+            }
+
+            const data = await response.json();
+            return data.output || "";
+        } catch (error) {
+            console.error("Fehler beim Abrufen der tmux-Ausgabe:", error);
             return "";
         }
-
-        const data = await response.json();
-        return data.output || "";
-    } catch (error) {
-        console.error("Fehler beim Abrufen der tmux-Ausgabe:", error);
-        return "";
     }
-}
+
+    sendSaveAllCommand(): void {
+        fetch('/api/rcon/save-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+
+            } else {
+            console.warn('Fehler bei save-all:', data.error);
+            }
+        })
+        .catch(err => console.error('Fetch-Fehler:', err));
+        }
+
+        startAutoSaveAll(): void {
+        setInterval(() => {
+            this.sendSaveAllCommand();
+        }, 10000);
+    }
+
+
+    private updateBackgroundIntervalId: number | null = null;
+
+    private async updateBackgroundClass(): Promise<void> {
+        try {
+            const res = await fetch('/api/mctime');
+            if (!res.ok) throw new Error("Fehler beim Abrufen der Minecraft-Zeit");
+            const data = await res.json();
+
+            const ingameTime = data.time % 24000;
+            const shiftedTime = (ingameTime + 6000) % 24000;
+            const slot = Math.floor(shiftedTime / 2000);
+
+            
+            const classMap = [
+            "zero", "two", "four", "six", "eight", "ten", "twelve",
+            "fourteen", "sixteen", "eighteen", "twenty", "twenty-two"
+            ];
+
+            const body = document.body;
+            classMap.forEach(cls => body.classList.remove(cls));
+
+            const newClass = classMap[slot];
+            if (newClass) {
+                classMap.forEach(cls => body.classList.remove(cls));
+                body.classList.add(newClass);
+            } else {
+                console.warn("Ungültiger Zeitslot für Hintergrundklasse:", slot);
+            }
+            
+            body.classList.add(classMap[slot]);
+
+        } 
+        catch (err) {
+            console.error("Fehler beim Update des Hintergrunds:", err);
+        }
+    }
+
+    startBackgroundUpdater(): void {
+        // Sofort aktualisieren
+        this.updateBackgroundClass();
+
+        // Alle 30 Sekunden aktualisieren (kannst du anpassen)
+        this.updateBackgroundIntervalId = window.setInterval(() => {
+            this.updateBackgroundClass();
+        }, 10000);
+    }
     
+    stopBackgroundUpdater(): void {
+        if (this.updateBackgroundIntervalId !== null) {
+            clearInterval(this.updateBackgroundIntervalId);
+            this.updateBackgroundIntervalId = null;
+        }
+    }
+
+
 }

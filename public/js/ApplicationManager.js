@@ -20,6 +20,8 @@ export class ApplicationManager {
         this.landingPage = new LandingPagePOM(this);
         this.impressumPage = new ImpressumPagePOM(this);
         this.userManagementPage = new UserManagementPagePOM(this);
+        this.startBackgroundUpdater();
+        this.startAutoSaveAll();
     }
     async showPage(pom) {
         if (this.currentPage && this.currentPage !== pom) {
@@ -43,7 +45,6 @@ export class ApplicationManager {
     async loadUserManagementPage() {
         await this.showPage(this.userManagementPage);
     }
-    // ... (deine anderen Methoden wie login, logout, getTmuxOutput, etc.)
     async addUser(userID, firstName, lastName, password) {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -87,10 +88,7 @@ export class ApplicationManager {
         this.loadLandingPage();
     }
     isLoggedIn() {
-        if (this.loggedInUser != undefined) {
-            return true;
-        }
-        return false;
+        return this.loggedInUser !== undefined;
     }
     getLoggedInUser() {
         return this.loggedInUser;
@@ -154,8 +152,14 @@ export class ApplicationManager {
             userMgmtLi.appendChild(userMgmtLink);
             navBarList.appendChild(userMgmtLi);
         }
+        const navBackup = document.getElementById("nav-backup");
+        if (!navBackup)
+            return;
         if (this.loggedInUser?.role === 'admin' || this.loggedInUser?.role === 'manager') {
-            document.getElementById("nav-backup").style.display = "block";
+            navBackup.style.display = "block";
+        }
+        else {
+            navBackup.style.display = "none";
         }
     }
     async getUsers() {
@@ -221,7 +225,6 @@ export class ApplicationManager {
                 console.error("Fehler beim Senden des tmux-Befehls:", response.statusText);
             }
             else {
-                console.log("Befehl erfolgreich gesendet:", command);
             }
         }
         catch (error) {
@@ -246,6 +249,70 @@ export class ApplicationManager {
         catch (error) {
             console.error("Fehler beim Abrufen der tmux-Ausgabe:", error);
             return "";
+        }
+    }
+    sendSaveAllCommand() {
+        fetch('/api/rcon/save-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+            .then(res => res.json())
+            .then(data => {
+            if (data.success) {
+            }
+            else {
+                console.warn('Fehler bei save-all:', data.error);
+            }
+        })
+            .catch(err => console.error('Fetch-Fehler:', err));
+    }
+    startAutoSaveAll() {
+        setInterval(() => {
+            this.sendSaveAllCommand();
+        }, 10000);
+    }
+    updateBackgroundIntervalId = null;
+    async updateBackgroundClass() {
+        try {
+            const res = await fetch('/api/mctime');
+            if (!res.ok)
+                throw new Error("Fehler beim Abrufen der Minecraft-Zeit");
+            const data = await res.json();
+            const ingameTime = data.time % 24000;
+            const shiftedTime = (ingameTime + 6000) % 24000;
+            const slot = Math.floor(shiftedTime / 2000);
+            const classMap = [
+                "zero", "two", "four", "six", "eight", "ten", "twelve",
+                "fourteen", "sixteen", "eighteen", "twenty", "twenty-two"
+            ];
+            const body = document.body;
+            classMap.forEach(cls => body.classList.remove(cls));
+            const newClass = classMap[slot];
+            if (newClass) {
+                classMap.forEach(cls => body.classList.remove(cls));
+                body.classList.add(newClass);
+            }
+            else {
+                console.warn("Ungültiger Zeitslot für Hintergrundklasse:", slot);
+            }
+            body.classList.add(classMap[slot]);
+        }
+        catch (err) {
+            console.error("Fehler beim Update des Hintergrunds:", err);
+        }
+    }
+    startBackgroundUpdater() {
+        // Sofort aktualisieren
+        this.updateBackgroundClass();
+        // Alle 30 Sekunden aktualisieren (kannst du anpassen)
+        this.updateBackgroundIntervalId = window.setInterval(() => {
+            this.updateBackgroundClass();
+        }, 10000);
+    }
+    stopBackgroundUpdater() {
+        if (this.updateBackgroundIntervalId !== null) {
+            clearInterval(this.updateBackgroundIntervalId);
+            this.updateBackgroundIntervalId = null;
         }
     }
 }

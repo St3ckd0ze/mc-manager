@@ -1,0 +1,24 @@
+.players-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.player-card {
+  text-align: center;
+  width: 80px;
+}
+
+.player-head {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated; /* macht es wie in Minecraft */
+}
+
+.player-name {
+  margin-top: 5px;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+

@@ -4,5 +4,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "prismarine-nbt": "^2.7.0",
+    "rcon-client": "^4.2.5"
   }
 }

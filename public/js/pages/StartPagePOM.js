@@ -10,16 +10,43 @@ export class StartPagePOM extends AbstractPOM {
     async loadPage() {
         await AbstractPOM.showPage(`./html/start.html`);
         const user = this.appManager.getLoggedInUser();
-        const userCount = await this.appManager.getUserCount();
-        const greeting = user ? `${user.firstName} ${user.lastName}` : "Guest";
-        const verb = userCount === 1 ? "ist" : "sind";
-        const greetingSpan = document.getElementById("Greeting");
-        const verbSpan = document.getElementById("Verb");
-        const userCountSpan = document.getElementById("UserCount");
-        if (greetingSpan && verbSpan && userCountSpan) {
-            greetingSpan.textContent = greeting;
-            verbSpan.textContent = verb;
-            userCountSpan.textContent = String(userCount);
+        // Spieleranzeige
+        const playersContainer = document.getElementById("OnlinePlayersContainer");
+        if (playersContainer) {
+            const updatePlayers = async () => {
+                try {
+                    const res = await fetch("/api/mc/players");
+                    if (!res.ok)
+                        throw new Error("Fehler beim Abrufen der Spieler");
+                    const players = await res.json();
+                    playersContainer.innerHTML = "";
+                    players.forEach(player => {
+                        const div = document.createElement("div");
+                        div.className = "player-card";
+                        const img = document.createElement("img");
+                        // Minecraft-Head via Minotar.net
+                        img.src = `https://minotar.net/helm/${player.name}/64.png`;
+                        img.alt = player.name;
+                        img.className = "player-head";
+                        if (!player.online) {
+                            img.style.filter = "grayscale(100%)";
+                        }
+                        const label = document.createElement("div");
+                        label.textContent = player.name;
+                        label.className = "player-name";
+                        div.appendChild(img);
+                        div.appendChild(label);
+                        playersContainer.appendChild(div);
+                    });
+                }
+                catch (err) {
+                    console.error("Fehler beim Laden der Spielerübersicht:", err);
+                }
+            };
+            // Sofort laden
+            await updatePlayers();
+            // Alle 10 Sekunden updaten
+            setInterval(updatePlayers, 10000);
         }
         const tmuxContainer = document.getElementById("TmuxConsoleContainer");
         if (tmuxContainer) {
