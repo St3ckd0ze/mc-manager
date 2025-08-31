@@ -2,35 +2,31 @@ import { AbstractPOM } from "./AbstractPOM.js";
 export class BackupsPagePOM extends AbstractPOM {
     appManager;
     currentPath = [];
-    // Listener-Referenzen für Navigation
-    linkRootListener;
-    linkImpressumListener;
-    linkUserManagementListener;
+    // Navbar Listener-Handler als Properties
+    linkRootClickHandler = () => {
+        if (this.appManager.isLoggedIn())
+            this.appManager.loadStartPage();
+        else
+            this.appManager.loadLandingPage();
+    };
+    linkImpressumClickHandler = () => {
+        this.appManager.loadImpressumPage();
+    };
+    linkUserManagementClickHandler = (e) => {
+        e.preventDefault();
+        this.appManager.loadUserManagementPage();
+    };
     constructor(appManager) {
         super();
         this.appManager = appManager;
     }
     async loadPage() {
         await AbstractPOM.showPage("./html/backups.html");
-        // Listener definieren und speichern
-        this.linkRootListener = () => {
-            if (this.appManager.isLoggedIn()) {
-                this.appManager.loadStartPage();
-            }
-            else {
-                this.appManager.loadLandingPage();
-            }
-        };
-        document.getElementById("LinkRoot")?.addEventListener("click", this.linkRootListener);
-        this.linkImpressumListener = () => {
-            this.appManager.loadImpressumPage();
-        };
-        document.getElementById("LinkImpressum")?.addEventListener("click", this.linkImpressumListener);
-        this.linkUserManagementListener = () => {
-            this.appManager.loadUserManagementPage();
-        };
-        document.getElementById("LinkUserManagement")?.addEventListener("click", this.linkUserManagementListener);
-        // Nur Admins und Manager dürfen hierher kommen
+        // Navbar Listener anhängen
+        document.getElementById("LinkRoot")?.addEventListener("click", this.linkRootClickHandler);
+        document.getElementById("LinkImpressum")?.addEventListener("click", this.linkImpressumClickHandler);
+        document.getElementById("LinkUserManagement")?.addEventListener("click", this.linkUserManagementClickHandler);
+        // Zugriff prüfen
         if (this.appManager.loggedInUser?.role !== "admin" && this.appManager.loggedInUser?.role !== "manager") {
             alert("Zugriff verweigert");
             this.appManager.loadStartPage();
@@ -38,36 +34,27 @@ export class BackupsPagePOM extends AbstractPOM {
         }
         this.loadBackupList();
     }
-    // Cleanup-Methode zum Entfernen aller Listener
     async unloadPage() {
-        if (this.linkRootListener) {
-            document.getElementById("LinkRoot")?.removeEventListener("click", this.linkRootListener);
-            this.linkRootListener = undefined;
-        }
-        if (this.linkImpressumListener) {
-            document.getElementById("LinkImpressum")?.removeEventListener("click", this.linkImpressumListener);
-            this.linkImpressumListener = undefined;
-        }
-        if (this.linkUserManagementListener) {
-            document.getElementById("LinkUserManagement")?.removeEventListener("click", this.linkUserManagementListener);
-            this.linkUserManagementListener = undefined;
-        }
-        // Optional: Pfad zurücksetzen oder weitere Cleanup-Aufgaben
+        // Navbar Listener entfernen
+        document.getElementById("LinkRoot")?.removeEventListener("click", this.linkRootClickHandler);
+        document.getElementById("LinkImpressum")?.removeEventListener("click", this.linkImpressumClickHandler);
+        document.getElementById("LinkUserManagement")?.removeEventListener("click", this.linkUserManagementClickHandler);
+        // Pfad und Container zurücksetzen
         this.currentPath = [];
         const container = document.getElementById("backup-list");
-        if (container) {
+        if (container)
             container.innerHTML = "";
-        }
     }
+    // --- Backup List Methoden bleiben unverändert ---
     async loadBackupList() {
         const path = this.currentPath.join("/");
         const res = await fetch(`/api/backup/list?path=${encodeURIComponent(path)}`);
+        const container = document.getElementById("backup-list");
         if (!res.ok) {
-            document.getElementById("backup-list").innerHTML = "<p>Fehler beim Laden der Backups.</p>";
+            container.innerHTML = "<p>Fehler beim Laden der Backups.</p>";
             return;
         }
         const data = await res.json();
-        const container = document.getElementById("backup-list");
         const visiblePath = path ? `/minecraft_backups/${path}` : "/minecraft_backups";
         container.innerHTML = `
             <h3 style="margin-bottom: 10px;">📁 ${visiblePath}</h3>
@@ -76,11 +63,9 @@ export class BackupsPagePOM extends AbstractPOM {
         const ul = document.createElement("ul");
         ul.style.listStyle = "none";
         ul.style.padding = "0";
-        // Zurück-Link (..)
         if (this.currentPath.length > 0) {
             const back = document.createElement("li");
             back.textContent = "⬅️ ..";
-            back.classList.add("directory");
             back.style.cursor = "pointer";
             back.style.padding = "6px 10px";
             back.style.fontWeight = "bold";
@@ -105,14 +90,6 @@ export class BackupsPagePOM extends AbstractPOM {
             nameSpan.style.cursor = item.isDirectory ? "pointer" : "default";
             nameSpan.style.color = "rgba(255,255,255,1)";
             nameSpan.style.fontWeight = item.isDirectory ? "bold" : "normal";
-            nameSpan.onmouseenter = () => {
-                if (item.isDirectory)
-                    nameSpan.style.textDecoration = "underline";
-            };
-            nameSpan.onmouseleave = () => {
-                if (item.isDirectory)
-                    nameSpan.style.textDecoration = "none";
-            };
             if (item.isDirectory) {
                 nameSpan.onclick = () => {
                     this.currentPath.push(item.name);
@@ -156,15 +133,6 @@ export class BackupsPagePOM extends AbstractPOM {
                 };
                 buttonGroup.appendChild(btn);
                 li.appendChild(buttonGroup);
-            }
-            if (!item.isDirectory && typeof item.size === "number") {
-                const sizeSpan = document.createElement("span");
-                sizeSpan.textContent = this.formatFileSize(item.size);
-                sizeSpan.style.marginLeft = "auto";
-                sizeSpan.style.color = "rgba(255,255,255,1)";
-                sizeSpan.style.fontSize = "0.9em";
-                sizeSpan.style.paddingRight = "10px";
-                li.insertBefore(sizeSpan, li.lastElementChild); // vor Buttons einfügen
             }
             ul.appendChild(li);
         }

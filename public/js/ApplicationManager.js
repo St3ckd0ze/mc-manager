@@ -4,6 +4,7 @@ import { LandingPagePOM } from "./pages/LandingPagePOM.js";
 import { ImpressumPagePOM } from "./pages/ImpressumPagePOM.js";
 import { UserManagementPagePOM } from "./pages/UserManagementPagePOM.js";
 import { User } from "./domain/User.js";
+import { PlayerDataPOM } from "./pages/PlayerDataPOM.js";
 export class ApplicationManager {
     loginCount = 0;
     //users = new Map<string, User>();
@@ -13,6 +14,8 @@ export class ApplicationManager {
     landingPage;
     impressumPage;
     userManagementPage;
+    playerDataPage = null;
+    currentPlayerName = null; // für die POM
     currentPage = null;
     constructor() {
         this.startPage = new StartPagePOM(this);
@@ -44,6 +47,13 @@ export class ApplicationManager {
     }
     async loadUserManagementPage() {
         await this.showPage(this.userManagementPage);
+    }
+    async loadPlayerDataPage(playerName) {
+        this.currentPlayerName = playerName;
+        if (!this.playerDataPage) {
+            this.playerDataPage = new PlayerDataPOM(this);
+        }
+        await this.showPage(this.playerDataPage);
     }
     async addUser(userID, firstName, lastName, password) {
         const response = await fetch('/api/users', {
@@ -286,16 +296,20 @@ export class ApplicationManager {
                 "fourteen", "sixteen", "eighteen", "twenty", "twenty-two"
             ];
             const body = document.body;
-            classMap.forEach(cls => body.classList.remove(cls));
-            const newClass = classMap[slot];
-            if (newClass) {
+            // Fade-Out starten
+            body.classList.add("fade-out");
+            // Nach 1,25 Sekunden (halbe Fade-Dauer) Klasse wechseln
+            setTimeout(() => {
                 classMap.forEach(cls => body.classList.remove(cls));
-                body.classList.add(newClass);
-            }
-            else {
-                console.warn("Ungültiger Zeitslot für Hintergrundklasse:", slot);
-            }
-            body.classList.add(classMap[slot]);
+                body.classList.add(classMap[slot]);
+                // Fade-In starten
+                body.classList.remove("fade-out");
+                body.classList.add("fade-in");
+                // Nach weiterer 1,25 Sekunden wieder entfernen, damit nächste Transition funktioniert
+                setTimeout(() => {
+                    body.classList.remove("fade-in");
+                }, 1250);
+            }, 1250);
         }
         catch (err) {
             console.error("Fehler beim Update des Hintergrunds:", err);

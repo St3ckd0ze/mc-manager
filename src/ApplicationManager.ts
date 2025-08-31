@@ -6,6 +6,7 @@ import { LandingPagePOM } from "./pages/LandingPagePOM.js";
 import { ImpressumPagePOM } from "./pages/ImpressumPagePOM.js";
 import { UserManagementPagePOM } from "./pages/UserManagementPagePOM.js";
 import { User } from "./domain/User.js";
+import { PlayerDataPOM } from "./pages/PlayerDataPOM.js";
 
 export class ApplicationManager {
 
@@ -18,6 +19,8 @@ export class ApplicationManager {
     private landingPage: LandingPagePOM;
     private impressumPage: ImpressumPagePOM;
     private userManagementPage: UserManagementPagePOM;
+    private playerDataPage: PlayerDataPOM | null = null;
+    public currentPlayerName: string | null = null; // für die POM
     
 
     private currentPage: { loadPage(): Promise<void>; unloadPage(): Promise<void> } | null = null;
@@ -30,6 +33,7 @@ export class ApplicationManager {
         this.userManagementPage = new UserManagementPagePOM(this);
         this.startBackgroundUpdater();
         this.startAutoSaveAll();
+
     }
 
     async showPage(pom: AbstractPOM): Promise<void> {
@@ -58,6 +62,16 @@ export class ApplicationManager {
 
     async loadUserManagementPage(): Promise<void> {
         await this.showPage(this.userManagementPage);
+    }
+
+    async loadPlayerDataPage(playerName: string): Promise<void> {
+        this.currentPlayerName = playerName;
+
+        if (!this.playerDataPage) {
+            this.playerDataPage = new PlayerDataPOM(this);
+        }
+
+        await this.showPage(this.playerDataPage);
     }
 
 
@@ -349,30 +363,38 @@ export class ApplicationManager {
             const shiftedTime = (ingameTime + 6000) % 24000;
             const slot = Math.floor(shiftedTime / 2000);
 
-            
             const classMap = [
-            "zero", "two", "four", "six", "eight", "ten", "twelve",
-            "fourteen", "sixteen", "eighteen", "twenty", "twenty-two"
+                "zero", "two", "four", "six", "eight", "ten", "twelve",
+                "fourteen", "sixteen", "eighteen", "twenty", "twenty-two"
             ];
 
             const body = document.body;
-            classMap.forEach(cls => body.classList.remove(cls));
 
-            const newClass = classMap[slot];
-            if (newClass) {
+            // Fade-Out starten
+            body.classList.add("fade-out");
+
+            // Nach 1,25 Sekunden (halbe Fade-Dauer) Klasse wechseln
+            setTimeout(() => {
                 classMap.forEach(cls => body.classList.remove(cls));
-                body.classList.add(newClass);
-            } else {
-                console.warn("Ungültiger Zeitslot für Hintergrundklasse:", slot);
-            }
-            
-            body.classList.add(classMap[slot]);
+                body.classList.add(classMap[slot]);
 
-        } 
-        catch (err) {
+                // Fade-In starten
+                body.classList.remove("fade-out");
+                body.classList.add("fade-in");
+
+                // Nach weiterer 1,25 Sekunden wieder entfernen, damit nächste Transition funktioniert
+                setTimeout(() => {
+                    body.classList.remove("fade-in");
+                }, 1250);
+
+            }, 1250);
+
+        } catch (err) {
             console.error("Fehler beim Update des Hintergrunds:", err);
         }
     }
+
+
 
     startBackgroundUpdater(): void {
         // Sofort aktualisieren

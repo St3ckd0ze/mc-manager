@@ -1,372 +1,181 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const backupRoutes = require('./public/routes/backup.js');
+const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
+const zlib = require('zlib');
+const nbt = require('prismarine-nbt');
+const { exec } = require('child_process');
+const { Rcon } = require('rcon-client');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 const app = express();
 const PORT = 3010;
-const { Rcon } = require('rcon-client');
 
+// Pfade
+const levelDatPath = '/home/ubuntu/game_servers/minecraft/paper_1-21-4/world/level.dat';
+const playersFile = './players.json';
+const statsDir = '/home/ubuntu/game_servers/minecraft/paper_1-21-4/world/stats';
+const userCacheFile = '/home/ubuntu/game_servers/minecraft/paper_1-21-4/usercache.json';
 
-// Statische Ordner freigeben
+let rcon = null;
+let isConnected = false;
+
+// Statische Ordner
 app.use(express.static('public'));
 app.use('/dist', express.static('dist'));
 app.use('/api/backup', backupRoutes);
 console.log("Backup-Routen wurden registriert");
 
-
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server gestartet auf Port: http://0.0.0.0:${PORT}`);
-});
-
-/**
- * The User List managed as an in-memory list
- */
-const userList = new Map();
-userList.set("thomas", { "userID": "thomas", "password": "superKlasse!", "firstName": "Thomas", "lastName": "Wiethaup", "role": "admin" });
-userList.set("nicklas", { "userID": "nicklas", "password": "314159", "firstName": "Nicklas", "lastName": "Schwend", "role": "manager" });
-userList.set("sabine", { "userID": "sabine", "password": "tgswh14", "firstName": "Sabine", "lastName": "Wiethaup", "role": "user" });
-userList.set("verena", { "userID": "verena", "password": "V280874S", "firstName": "Verena", "lastName": "Schwend", "role": "user" });
-userList.set("alex", { "userID": "alex", "password": "4206", "firstName": "Alex", "lastName": "Liebherr", "role": "user" });
-
+// Body Parser
 app.use(bodyParser.json());
 
-app.use(function (req, res, next) {
+// CORS
+app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Expose-Headers", "Authorization");
     next();
 });
 
-app.get('/api/login', function (req, res, next) {
-    if (typeof req.headers.authorization !== "undefined") {
-        var authenticationString = req.headers.authorization;
-        let base64String = authenticationString.split(" ")[1];
-        var credentials = Buffer.from(base64String, 'base64').toString('utf-8');
-        const userID = credentials.split(":")[0];
-        const password = credentials.split(":")[1];
+/** -------------------
+ *  USER MANAGEMENT
+ * ------------------ */
+const userList = new Map();
+userList.set("thomas", { userID:"thomas", password:"superKlasse!", firstName:"Thomas", lastName:"Wiethaup", role:"admin" });
+userList.set("nicklas", { userID:"nicklas", password:"314159", firstName:"Nicklas", lastName:"Schwend", role:"manager" });
+userList.set("sabine", { userID:"sabine", password:"tgswh14", firstName:"Sabine", lastName:"Wiethaup", role:"user" });
+userList.set("verena", { userID:"verena", password:"V280874S", firstName:"Verena", lastName:"Schwend", role:"user" });
+userList.set("alex", { userID:"alex", password:"4206", firstName:"Alex", lastName:"Liebherr", role:"user" });
 
-        console.log("Want to login user: " + userID + " Password: " + password)
-
-        if (userID && password) {
-            let userObject = userList.get(userID);
-            if (userObject) {
-                if (password === userObject.password) {
-                    console.log("Login success")
-                    let result = { 'userID': userID,
-                    role: userObject.role
-                    };
-
-                    if (userObject.firstName) {
-                        result.firstName = userObject.firstName;
-                    }
-                    if (userObject.lastName) {
-                        result.lastName = userObject.lastName;
-                    }
-
-                    res.status(200).send(result);
-                }
-                else {
-                    console.error("Invalid password")
-                    res.status(401).send({ 'Error': 'Invalid login data' });
-                }
-            }
-            else {
-                console.error("User does not exist")
-                res.status(401).send({ 'Error': 'Invalid login data' });
-            }
+// LOGIN
+app.get('/api/login', (req,res)=>{
+    if (!req.headers.authorization) return res.status(401).send({Error:'Authorization header missing'});
+    try {
+        const base64 = req.headers.authorization.split(' ')[1];
+        const [userID, password] = Buffer.from(base64,'base64').toString().split(':');
+        const user = userList.get(userID);
+        if(user && user.password === password){
+            const {firstName,lastName,role} = user;
+            return res.status(200).send({userID, firstName, lastName, role});
         }
-        else {
-            console.error("Data missing")
-            res.status(401).send({ 'Error': 'Invalid login data' });
-        }
-    } else {
-        res.status(401).send({ 'Error': 'Authorization header missing' });
+        return res.status(401).send({Error:'Invalid login data'});
+    } catch(e){
+        return res.status(401).send({Error:'Invalid login data'});
     }
 });
 
-app.post('/api/users', function (req, res, next) {
-    let userObject = req.body;
-    if (userObject) {
-        console.log("Got Body: " + JSON.stringify(req.body))
-        let userID = req.body.userID;
-        let password = req.body.password;
-        if (userID && password) {
-            if (userList.get(userID)) {
-                res.status(400).send({ 'Error': 'User already exists' })
-                return;
-            }
-            userList.set(userID, userObject);
-            res.status(200).send({ 'Info': 'Added user ' + userID, 'Count': 'Have ' + userList.size + ' users' });
-        }
-        else {
-            res.status(400).send({ 'Error': 'Incomplete data in body' })
-        }
-    }
-    else {
-        res.status(400).send({ 'Error': 'Body is missing' })
-    }
+// CRUD USERS
+app.post('/api/users', (req,res)=>{
+    const u=req.body;
+    if(!u||!u.userID||!u.password) return res.status(400).send({Error:'Incomplete data in body'});
+    if(userList.get(u.userID)) return res.status(400).send({Error:'User already exists'});
+    userList.set(u.userID,u);
+    res.status(200).send({Info:`Added user ${u.userID}`, Count:`Have ${userList.size} users`});
 });
+app.get('/api/users',(req,res)=>res.status(200).send(Array.from(userList.values())));
+app.get('/api/users/count',(req,res)=>res.status(200).send({UserCount:userList.size}));
+app.get('/api/users/:id',(req,res)=>{const u=userList.get(req.params.id); if(!u) return res.status(404).json({message:'User not found'}); res.json(u);});
+app.put('/api/users/:id',(req,res)=>{const c=userList.get(req.params.id);const u=req.body;if(!c) return res.status(404).json({message:'User not found'}); if(!u.userID||!u.password) return res.status(400).json({message:'UserID and password required'}); Object.assign(c,u); userList.set(req.params.id,c); res.status(200).json(c);});
+app.delete('/api/users/:id',(req,res)=>{if(!userList.has(req.params.id)) return res.status(404).json({message:'User not found'}); userList.delete(req.params.id); res.status(204).send();});
 
-app.get('/api/users', function (req, res, next) {
-    let userArray = Array.from(userList.entries()).map(([name, value]) => {
-        return value;
-    });
-    res.status(200).send(userArray);
-});
+/** -------------------
+ *  TMUX COMMANDS
+ * ------------------ */
+app.post('/api/tmux/command',(req,res)=>{const cmd=req.body.command; if(!cmd) return res.status(400).json({error:"Kein Befehl angegeben"}); exec(`tmux send-keys -t mc_session "${cmd}" Enter`,(err)=>{if(err) return res.status(500).json({error:err.message}); res.status(200).json({message:"Befehl ausgeführt"});});});
+app.get('/api/tmux/output',(req,res)=>{exec('tmux capture-pane -t mc_session:0.0 -p -S -100',(err,stdout)=>{if(err) return res.status(500).json({error:err.message}); res.json({output:stdout});});});
 
-app.get('/api/users/count', function (req, res, next) {
-    res.status(200).send({ 'UserCount': userList.size });
-});
-
-// Get user by id
-app.get('/api/users/:id', (req, res) => {
-    const userID = req.params.id;
-    const user = userList.get(userID);
-    if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-    }
-    res.json(user);
-});
-
-// Update an existing user
-app.put('/api/users/:id', (req, res) => {
-    const userID = req.params.id;
-    const updatedUser = req.body;
-    let currentUser = userList.get(userID);
-    if (!currentUser) {
-        return res.status(404).json({ message: 'User not found' });
-    }
-    else {
-        if (!updatedUser.userID || !updatedUser.password) {
-            return res.status(400).json({ message: 'UserID and password are required' });
-        }
-        console.log("Update user: " + userID + " with: " + JSON.stringify(updatedUser))
-        Object.assign(currentUser, updatedUser);
-        userList.set(userID, currentUser);
-        console.log("Updated user: " + userID + " with: " + JSON.stringify(currentUser))
-        res.status(200).json(currentUser);
-    }
-});
-
-app.delete('/api/users/:id', (req, res) => {
-    const userId = req.params.id;
-    console.log("Want to delete: " + userId)
-    let userObject = userList.get(userId);
-    if (userObject) {
-        userList.delete(userId);
-        res.status(204).send(); // 204 No Content on successful delete
-    }
-    else {
-        return res.status(404).json({ message: 'User not found' });
-    }
-});
-
-const { exec } = require('child_process');
-
-// POST /api/tmux/command
-app.post('/api/tmux/command', (req, res) => {
-    const command = req.body.command;
-    if (!command) {
-        return res.status(400).json({ error: "Kein Befehl angegeben" });
-    }
-
-    // Befehl IN der Session mc_session ausführen und mit Enter abschicken
-    exec(`tmux send-keys -t mc_session "${command}" Enter`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Fehler beim Ausführen des Befehls: ${error.message}`);
-            return res.status(500).json({ error: error.message });
-        }
-        if (stderr) {
-            console.error(`Stderr: ${stderr}`);
-        }
-        res.status(200).json({ message: "Befehl ausgeführt" });
+/** -------------------
+ *  MC TIME
+ * ------------------ */
+app.get('/api/mctime',(req,res)=>{
+    fs.readFile(levelDatPath,(err,data)=>{
+        if(err) return res.status(500).json({error:'Datei konnte nicht gelesen werden'});
+        zlib.gunzip(data,(err2,buffer)=>{
+            if(err2) return res.status(500).json({error:'Fehler beim Entpacken'});
+            nbt.parse(buffer,(err3,result)=>{
+                if(err3) return res.status(500).json({error:'Fehler beim Parsen'});
+                try{
+                    const longTime=result.value.Data.value.DayTime.value;
+                    const mcTime=longTime[0]*2**32+longTime[1];
+                    res.json({time:mcTime%24000});
+                }catch(e){res.status(500).json({error:'Fehler beim Auslesen'});}
+            });
+        });
     });
 });
 
-// GET /api/tmux/output
-app.get('/api/tmux/output', (req, res) => {
-  exec('tmux capture-pane -t mc_session:0.0 -p -S -100', (error, stdout, stderr) => {
-    if (error) {
-      console.error('Error executing tmux command:', error);
-      return res.status(500).json({ error: error.message });
-    }
-    if (stderr) {
-      console.error('tmux stderr:', stderr);
-    }
-    res.json({ output: stdout });
-  });
-});
-
-const fs = require('fs');
-const zlib = require('zlib');
-const nbt = require('prismarine-nbt');
-
-// ⇨ Pfad zur level.dat deiner Welt anpassen:
-const levelDatPath = '/home/ubuntu/game_servers/minecraft/paper_1-21-4/world/level.dat';
-
-app.get('/api/mctime', (req, res) => {
-  fs.readFile(levelDatPath, (err, data) => {
-    if (err) {
-      console.error('Fehler beim Lesen der level.dat:', err);
-      return res.status(500).json({ error: 'Datei konnte nicht gelesen werden' });
-    }
-
-    zlib.gunzip(data, (err2, buffer) => {
-      if (err2) {
-        console.error('Fehler beim Entpacken von level.dat:', err2);
-        return res.status(500).json({ error: 'Fehler beim Entpacken' });
-      }
-
-      nbt.parse(buffer, (err3, result) => {
-        if (err3) {
-          console.error('Fehler beim Parsen der NBT-Daten:', err3);
-          return res.status(500).json({ error: 'Fehler beim Parsen der Datei' });
-        }
-
-        try {
-            const longTime = result.value.Data.value.DayTime.value;
-            const mcTime = longTime[0] * 2 ** 32 + longTime[1];
-            const timeOfDay = mcTime % 24000;
-            res.json({ time: timeOfDay });
-        } catch (e) {
-          console.error('Fehler beim Extrahieren der Zeit:', e);
-          res.status(500).json({ error: 'Fehler beim Auslesen der Zeit' });
-        }
-      });
-    });
-  });
-});
-
-
-let rcon = null;
-let isConnected = false;
-
-async function getRconConnection() {
-  if (rcon && isConnected) {
-    // Verbindung ist da, wiederverwenden
-    return rcon;
-  }
-  // Neue Verbindung erstellen
-  rcon = new Rcon({
-    host: '127.0.0.1',
-    port: 25575,
-    password: 'superTollesPasswort!',
-  });
-
-  // Event-Listener für Verbindungsstatus
-  rcon.on('connect', () => {
-    console.log('RCON verbunden');
-    isConnected = true;
-  });
-
-  rcon.on('end', () => {
-    console.log('RCON Verbindung geschlossen');
-    isConnected = false;
-    rcon = null;
-  });
-
-  rcon.on('error', (err) => {
-    console.error('RCON Fehler:', err);
-  });
-
-  try {
+/** -------------------
+ *  RCON
+ * ------------------ */
+async function getRconConnection(){
+    if(rcon && isConnected) return rcon;
+    rcon = new Rcon({host:'127.0.0.1',port:25575,password:'superTollesPasswort!'});
+    rcon.on('connect',()=>{console.log('RCON verbunden'); isConnected=true;});
+    rcon.on('end',()=>{console.log('RCON Verbindung geschlossen'); isConnected=false; rcon=null;});
+    rcon.on('error',(err)=>console.error('RCON Fehler:',err));
     await rcon.connect();
-    isConnected = true;
+    isConnected=true;
     return rcon;
-  } catch (err) {
-    console.error('RCON Verbindungsfehler:', err);
-    isConnected = false;
-    rcon = null;
-    throw err;
-  }
 }
+async function sendRconCommand(cmd){const c=await getRconConnection(); return c.send(cmd);}
+app.post('/api/rcon/save-all',async (req,res)=>{try{const r=await sendRconCommand('save-all'); res.json({success:true,message:'save-all Befehl gesendet',result:r});}catch(e){res.status(500).json({success:false,error:e.message});}});
 
-async function sendRconCommand(command) {
-  try {
-    const connection = await getRconConnection();
-    const response = await connection.send(command);
-    return response;
-  } catch (error) {
-    console.error('Fehler beim Senden des RCON-Befehls:', error);
-    throw error;
-  }
-}
+/** -------------------
+ *  PLAYERS
+ * ------------------ */
+function loadPlayers(){try{if(fs.existsSync(playersFile)){const d=JSON.parse(fs.readFileSync(playersFile,'utf8')); if(Array.isArray(d)) return d;}return [];}catch(e){console.error('Fehler beim Laden players.json:',e); return [];} }
+function savePlayers(p){try{fs.writeFileSync(playersFile,JSON.stringify(p,null,2));}catch(e){console.error('Fehler beim Speichern players.json:',e);}}
 
-// Beispiel Express-Route
-app.post('/api/rcon/save-all', async (req, res) => {
-  try {
-    const result = await sendRconCommand('save-all');
-    res.json({ success: true, message: 'save-all Befehl gesendet', result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-const playersFile = './players.json';
-
-// Hilfsfunktion: Spieler-Liste laden
-function loadPlayers() {
+app.get('/api/mc/players', async (req, res) => {
     try {
-        if (fs.existsSync(playersFile)) {
-            const data = JSON.parse(fs.readFileSync(playersFile, 'utf8'));
-            if (Array.isArray(data)) {
-                return data;
-            } else {
-                return []; // Falls aus Versehen ein Objekt drin steht
+        // 1. players.json laden
+        let players = loadPlayers();
+
+        // 2. usercache.json laden und neue Spieler hinzufügen
+        const cached = loadUserCache();
+        for (let entry of cached) {
+            if (!players.find(p => p.name === entry.name)) {
+                players.push({
+                    name: entry.name,
+                    uuid: entry.uuid,
+                    online: false // standardmäßig offline
+                });
             }
         }
-        return [];
-    } catch (err) {
-        console.error("Fehler beim Laden players.json:", err);
-        return [];
-    }
-}
 
-
-// Hilfsfunktion: Spieler-Liste speichern
-function savePlayers(players) {
-    try {
-        if (!Array.isArray(players)) {
-            players = [];
-        }
-        fs.writeFileSync(playersFile, JSON.stringify(players, null, 2));
-    } catch (err) {
-        console.error("Fehler beim Speichern players.json:", err);
-    }
-}
-
-
-// API-Endpunkt für Spielerübersicht
-app.get('/api/mc/players', async (req, res) => {
-    let players = loadPlayers();
-
-    try {
-        const rconResponse = await sendRconCommand("list");
-        // Beispiel: "There are 2 of a max of 20 players online: Sabina14, St3ckd0se"
-        const match = rconResponse.match(/players online:\s*(.*)/);
-        const onlineNames = match && match[1].trim().length > 0
-            ? match[1].split(",").map(n => n.trim())
+        // 3. Online-Status via RCON abrufen
+        const r = await sendRconCommand('list');
+        const match = r.match(/players online:\s*(.*)/);
+        const onlineNames = match && match[1].trim().length
+            ? match[1].split(',').map(n => n.trim())
             : [];
 
-        // Alle Online-Spieler in DB eintragen, falls neu
-        onlineNames.forEach(name => {
-            if (!players.find(p => p.name === name)) {
-                players.push({ name, online: true });
+        // 4. Online-Status in players.json setzen
+        for (let p of players) {
+            p.online = onlineNames.includes(p.name);
+            if (!p.uuid) {
+                try {
+                    const f = await fetch(`https://api.mojang.com/users/profiles/minecraft/${p.name}`);
+                    if (f.ok) {
+                        const data = await f.json();
+                        p.uuid = data.id;
+                    }
+                } catch { }
             }
-        });
+        }
 
-        // Online-Status aktualisieren
-        players = players.map(p => ({
-            ...p,
-            online: onlineNames.includes(p.name)
-        }));
-
-        // Speichern
+        // 5. Speichern der players.json
         savePlayers(players);
 
-        // Sortieren: online vorne
-        players.sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
+        // 6. Sortierung: online Spieler zuerst, offline danach
+        players.sort((a, b) => {
+            if (a.online === b.online) return a.name.localeCompare(b.name);
+            return a.online ? -1 : 1;
+        });
 
+        // 7. Spieler zurückgeben
         res.json(players);
     } catch (err) {
         console.error("Fehler bei /api/mc/players:", err);
@@ -376,3 +185,55 @@ app.get('/api/mc/players', async (req, res) => {
 
 
 
+app.get("/api/mc/stats/:player", (req,res)=>{
+    const name = req.params.player;
+    const players = loadPlayers();
+    const player = players.find(p => p.name === name);
+    if (!player) return res.status(404).json({error:"Spieler nicht gefunden"});
+
+    let statsFile = null;
+    try {
+        const files = fs.readdirSync(statsDir);
+        // UUID aus Mojang ohne Bindestriche
+        const uuidNoDash = player.uuid ? player.uuid.replace(/-/g, '') : null;
+        statsFile = files.find(f => {
+            const fNoExt = f.replace('.json','');
+            const fClean = fNoExt.replace(/-/g,''); // Bindestriche entfernen
+            return fClean === uuidNoDash || f.includes(player.name);
+        });
+    } catch (err) {
+        console.error("Fehler beim Lesen des Stats-Verzeichnisses:", err);
+        return res.status(500).json({error:"Stats-Verzeichnis konnte nicht gelesen werden"});
+    }
+
+    if (!statsFile) return res.status(404).json({error:"Keine Statistiken vorhanden"});
+
+    try {
+        const stats = JSON.parse(fs.readFileSync(path.join(statsDir, statsFile),'utf-8'));
+        res.json(stats);
+    } catch (err) {
+        console.error("Fehler beim Lesen der Stats-Datei:", err);
+        res.status(500).json({error:"Fehler beim Lesen der Datei"});
+    }
+});
+
+function loadUserCache() {
+    try {
+        if (fs.existsSync(userCacheFile)) {
+            const data = JSON.parse(fs.readFileSync(userCacheFile, 'utf8'));
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) {
+        console.error("Fehler beim Laden usercache.json:", e);
+    }
+    return [];
+}
+
+
+/** -------------------
+ *  START SERVER
+ * ------------------ */
+app.listen(PORT,'0.0.0.0',(err)=>{
+    if(err) console.error("Server konnte nicht gestartet werden:",err);
+    else console.log(`Server gestartet auf http://0.0.0.0:${PORT}`);
+});

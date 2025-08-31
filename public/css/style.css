@@ -22,3 +22,25 @@
   word-break: break-word;
 }
 
+body {
+  color: black;        /* Standard */
+}
+
+body.night-mode {
+  color: white;        /* Nur wenn die Klasse gesetzt ist */
+}
+
+body {
+    transition: opacity 5s ease-in-out; /* Übergangseffekt */
+    opacity: 1; /* Anfangs opak */
+    background-size: cover;
+    background-position: center; 
+}
+
+body.fade-out {
+    opacity: 0;
+}
+
+body.fade-in {
+    opacity: 1;
+}
